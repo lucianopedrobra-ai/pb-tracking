@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedro Bravin — Seguimiento de Entregas</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh;}
+  .topbar{background:#fff;border-bottom:1px solid #e5e5e5;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;}
+  .topbar-logo{font-size:15px;font-weight:600;color:#1a1a1a;}
+  .topbar-sub{font-size:12px;color:#888;}
+  .topbar-right{margin-left:auto;font-size:12px;color:#888;}
+  .container{max-width:680px;margin:0 auto;padding:16px;}
+  .tabs{display:flex;background:#fff;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:16px;overflow:hidden;}
+  .tab{flex:1;padding:10px 4px;font-size:12px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;transition:all 0.15s;}
+  .tab.active{color:#1a1a1a;border-bottom:2px solid #1a1a1a;font-weight:500;background:#fafafa;}
+  .tab:disabled{opacity:0.4;cursor:not-allowed;}
+  .screen{display:none;}.screen.active{display:block;}
+  .card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:12px;margin-bottom:8px;}
+  .badge{display:inline-block;font-size:11px;padding:3px 8px;border-radius:6px;font-weight:500;}
+  .badge-pending{background:#FEF3C7;color:#92400E;}
+  .badge-done{background:#D1FAE5;color:#065F46;}
+  .badge-next{background:#DBEAFE;color:#1E40AF;}
+  .row{display:flex;align-items:center;gap:8px;}
+  .pos-num{width:26px;height:26px;border-radius:50%;background:#f5f5f5;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#888;flex-shrink:0;}
+  .pos-num.done{background:#D1FAE5;color:#065F46;border-color:#A7F3D0;}
+  .pos-num.next{background:#DBEAFE;color:#1E40AF;border-color:#BFDBFE;}
+  .client-name{font-size:13px;font-weight:600;color:#1a1a1a;}
+  .client-detail{font-size:11px;color:#888;margin-top:1px;}
+  .eta-time{font-size:14px;font-weight:600;color:#1a1a1a;}
+  .eta-label{font-size:10px;color:#888;}
+  .btn{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:none;font-size:13px;cursor:pointer;color:#1a1a1a;font-family:inherit;}
+  .btn:active{transform:scale(0.98);}
+  .btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+  .btn-success{background:#D1FAE5;color:#065F46;border-color:#A7F3D0;}
+  .btn-sm{padding:5px 12px;font-size:12px;}
+  .btn-icon{padding:5px 7px;font-size:12px;}
+  .vol-select{font-size:12px;border:1px solid #e5e5e5;border-radius:6px;padding:3px 5px;background:#fff;color:#1a1a1a;font-family:inherit;}
+  .time-input{font-size:13px;border:1px solid #e5e5e5;border-radius:8px;padding:5px 8px;background:#fff;color:#1a1a1a;font-family:inherit;}
+  .edit-field{font-size:12px;border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;background:#fafafa;color:#1a1a1a;width:100%;font-family:inherit;}
+  .edit-field:focus{outline:none;border-color:#1a1a1a;background:#fff;}
+  .divider{border:none;border-top:1px solid #f0f0f0;margin:8px 0;}
+  .wsp-preview{background:#f0fdf4;border-radius:12px;padding:14px;margin-bottom:12px;border-left:3px solid #25D366;}
+  .wsp-title{font-size:11px;color:#888;margin-bottom:6px;}
+  .wsp-msg{color:#1a1a1a;font-size:13px;line-height:1.7;white-space:pre-line;}
+  .wsp-btn{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:8px 18px;border-radius:8px;background:#25D366;color:white;border:none;font-size:13px;cursor:pointer;text-decoration:none;font-family:inherit;}
+  .loc-header{display:flex;align-items:center;gap:8px;padding:8px 0 4px;margin-top:4px;}
+  .loc-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:#EFF6FF;color:#1D4ED8;}
+  .loc-line{flex:1;height:1px;background:#f0f0f0;}
+  .drag-handle{cursor:grab;color:#ccc;font-size:16px;padding:0 2px;flex-shrink:0;touch-action:none;}
+  .drag-handle:active{cursor:grabbing;}
+  .dragging{opacity:0.3;}
+  .drop-target{border:2px dashed #93C5FD!important;}
+  .upload-zone{border:2px dashed #d1d5db;border-radius:12px;padding:2.5rem 1rem;text-align:center;cursor:pointer;background:#fff;}
+  .upload-zone:hover{background:#fafafa;border-color:#9ca3af;}
+  .upload-zone.dragover{background:#EFF6FF;border-color:#93C5FD;}
+  .summary-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+  .metric{background:#fafafa;border-radius:8px;padding:10px;text-align:center;border:1px solid #f0f0f0;}
+  .metric-val{font-size:17px;font-weight:600;color:#1a1a1a;}
+  .metric-label{font-size:10px;color:#888;margin-top:2px;}
+  .loading-wrap{display:none;background:#fff;border-radius:12px;padding:2rem;text-align:center;border:1px solid #e5e5e5;}
+  .edit-panel{border-top:1px solid #f0f0f0;margin-top:8px;padding-top:8px;display:none;}
+  .edit-panel.open{display:block;}
+  .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+  .edit-label{font-size:11px;color:#888;margin-bottom:3px;}
+  .loc-suggestions{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+  .loc-pill{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid #e5e5e5;cursor:pointer;background:#fafafa;color:#888;}
+  .loc-pill:hover{background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;}
+  .gps-block{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:12px;margin-bottom:14px;}
+  .gps-row{display:flex;align-items:center;gap:8px;}
+  .gps-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+  .gps-url{font-size:11px;color:#888;margin-top:6px;padding:6px 8px;background:#fafafa;border-radius:6px;border:1px solid #f0f0f0;word-break:break-all;}
+  .spinner{display:inline-block;width:20px;height:20px;border:2px solid #e5e5e5;border-top-color:#1a1a1a;border-radius:50%;animation:spin 0.7s linear infinite;margin-bottom:8px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .info-bar{background:#EFF6FF;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#1E40AF;display:flex;align-items:flex-start;gap:8px;}
+  @media(max-width:480px){
+    .topbar{padding:10px 12px;}
+    .container{padding:10px;}
+    .edit-grid{grid-template-columns:1fr;}
+    .tab{font-size:11px;padding:8px 2px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-logo">Pedro Bravin S.A</div>
+    <div class="topbar-sub">Seguimiento de entregas</div>
+  </div>
+  <div class="topbar-right" id="global-status"></div>
+</div>
+
+<div class="container">
+
+  <div class="tabs">
+    <button class="tab active" onclick="showScreen('carga')" id="tab-carga"><i class="ti ti-file-upload"></i> Cargar</button>
+    <button class="tab" onclick="showScreen('logistica')" id="tab-logistica" disabled><i class="ti ti-clipboard-list"></i> Logística</button>
+    <button class="tab" onclick="showScreen('chofer')" id="tab-chofer" disabled><i class="ti ti-truck-delivery"></i> Chofer</button>
+    <button class="tab" onclick="showScreen('cliente')" id="tab-cliente" disabled><i class="ti ti-eye"></i> Cliente</button>
+  </div>
+
+  <!-- CARGA -->
+  <div id="screen-carga" class="screen active">
+    <div class="gps-block">
+      <div class="gps-row">
+        <div class="gps-dot" id="gps-dot" style="background:#25D366;"></div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:500;">Link GPS Red Security <span style="font-size:11px;font-weight:400;color:#888;">(vista Simple)</span></div>
+        </div>
+        <button class="btn btn-sm" onclick="toggleGPSEdit()" id="btn-gps-edit">Cambiar</button>
+      </div>
+      <div class="gps-url" id="gps-preview"></div>
+      <div id="gps-edit-area" style="display:none;margin-top:8px;">
+        <input id="gps-link-input" class="edit-field" placeholder="https://gps.redsecurity.com.ar/StreetZITSimple/..." style="margin-bottom:6px;">
+        <button class="btn btn-sm btn-primary" onclick="guardarGPS()">Guardar</button>
+      </div>
+    </div>
+
+    <div class="upload-zone" id="upload-zone"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <i class="ti ti-file-type-pdf" style="font-size:40px;color:#ccc;display:block;margin-bottom:10px;"></i>
+      <div style="font-size:15px;font-weight:600;margin-bottom:4px;">Subí el PDF de la Hoja de Ruta</div>
+      <div style="font-size:13px;color:#888;">Hacé clic o arrastrá el archivo aquí</div>
+      <input type="file" id="file-input" accept=".pdf" style="display:none;" onchange="procesarPDF(this.files[0])">
+    </div>
+
+    <div class="loading-wrap" id="loading-bar">
+      <div class="spinner"></div>
+      <div id="loading-msg" style="font-size:13px;color:#888;">Analizando...</div>
+    </div>
+
+    <div style="margin-top:12px;text-align:center;">
+      <button class="btn btn-sm" onclick="usarDemoHR()" style="color:#888;font-size:12px;">
+        <i class="ti ti-flask"></i> Usar HR 00006997 de ejemplo
+      </button>
+    </div>
+  </div>
+
+  <!-- LOGISTICA -->
+  <div id="screen-logistica" class="screen">
+    <div class="summary-bar">
+      <div class="metric"><div class="metric-val" id="met-paradas">—</div><div class="metric-label">Paradas</div></div>
+      <div class="metric"><div class="metric-val" id="met-kg">—</div><div class="metric-label">Carga total</div></div>
+      <div class="metric"><div class="metric-val" id="met-retorno">—</div><div class="metric-label">Regreso est.</div></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:12px;color:#888;">Salida:</span>
+        <input type="time" id="hora-salida" class="time-input" value="07:00" style="width:90px;" onchange="recalcular()">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:12px;color:#888;">Tiempo hasta primer destino:</span>
+        <input type="number" id="tiempo-zona" class="time-input" value="50" min="5" max="180" style="width:52px;" onchange="recalcular()">
+        <span style="font-size:11px;color:#888;">min</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#aaa;margin-bottom:8px;"><i class="ti ti-grip-vertical"></i> Arrastrá para ordenar · <i class="ti ti-pencil"></i> Editá localidad, teléfono y material</div>
+    <div id="paradas-logistica"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="activarChofer()"><i class="ti ti-send"></i> Confirmar y enviar al chofer</button>
+      <button class="btn" onclick="recalcular()"><i class="ti ti-refresh"></i> Recalcular</button>
+    </div>
+  </div>
+
+  <!-- CHOFER -->
+  <div id="screen-chofer" class="screen">
+    <div class="info-bar"><i class="ti ti-info-circle"></i> Confirmá cada entrega al terminar para avisar al siguiente cliente.</div>
+    <div id="wsp-notif-area"></div>
+    <div id="paradas-chofer"></div>
+  </div>
+
+  <!-- CLIENTE -->
+  <div id="screen-cliente" class="screen">
+    <div style="font-size:12px;color:#888;margin-bottom:8px;">Seleccioná un cliente para ver su vista:</div>
+    <select id="select-cliente" class="vol-select" style="width:100%;font-size:13px;padding:8px;margin-bottom:12px;border-radius:8px;" onchange="renderCliente()"></select>
+    <div id="vista-cliente-card"></div>
+  </div>
+
+</div>
+
+<script>
+const TU_TEL = '5493404000000';
+const VOL_TIEMPO = {chico:15, mediano:30, grande:45};
+const GPS_DEFAULT = 'https://gps.redsecurity.com.ar/StreetZITSimple/index.html?GUID=2c0fe822-49b1-4710-ac12-f07cbf289e4a';
+
+let paradas = [];
+let estado = [];
+let editOpen = [];
+let dragSrc = null;
+let gpsLink = GPS_DEFAULT;
+
+const DEMO = [
+  {cliente:"ANSIL S.A", localidad:"Angélica", tel:TU_TEL, material:"Alambre p/sol. 15kg", kg:71, vol:"chico"},
+  {cliente:"BAL PLAS S.A", localidad:"Angélica", tel:TU_TEL, material:"Hierro ADN 6-10mm", kg:22.2, vol:"mediano"},
+  {cliente:"FILIPPONI J.C", localidad:"Cañada Rosquín", tel:TU_TEL, material:"Hierro, perfiles, chapas, tanques", kg:999, vol:"grande"},
+  {cliente:"NONO CARLOS SA", localidad:"Cañada Rosquín", tel:TU_TEL, material:"Estructural + planchuela", kg:589, vol:"grande"},
+  {cliente:"GALVAN MAXIMILIANO", localidad:"Rafaela", tel:TU_TEL, material:"Estructural L/C 120x120", kg:45.3, vol:"mediano"},
+  {cliente:"DALMAZZO J.G", localidad:"Rafaela", tel:TU_TEL, material:"Perfil C galv. 12mt", kg:490.6, vol:"grande"},
+  {cliente:"NOVARA RODRIGO", localidad:"Rafaela", tel:TU_TEL, material:"Hierro ADN + Perfil C galv.", kg:1837, vol:"grande"},
+  {cliente:"METALURGICA PUEBLO VIEJO", localidad:"Villa Perper (Entre Ríos)", tel:TU_TEL, material:"Alambre, ángulos, chapas, caños", kg:2954, vol:"grande"},
+  {cliente:"REDES DEL NORTE SA", localidad:"Rafaela", tel:TU_TEL, material:"Chapa galv. lisa", kg:367.5, vol:"grande"},
+  {cliente:"QUINTERO J.F", localidad:"Sa Pereira", tel:TU_TEL, material:"Cincalum + perfiles + hierro", kg:862.5, vol:"grande"},
+];
+
+function actualizarGPSUI() {
+  const dot = document.getElementById('gps-dot');
+  const preview = document.getElementById('gps-preview');
+  const ok = gpsLink && gpsLink.includes('redsecurity') && gpsLink.includes('GUID');
+  dot.style.background = ok ? '#25D366' : '#EF4444';
+  preview.textContent = gpsLink || 'Sin link configurado';
+}
+
+function toggleGPSEdit() {
+  const area = document.getElementById('gps-edit-area');
+  const input = document.getElementById('gps-link-input');
+  const visible = area.style.display !== 'none';
+  area.style.display = visible ? 'none' : 'block';
+  if (!visible) input.value = gpsLink;
+}
+
+function guardarGPS() {
+  const val = document.getElementById('gps-link-input').value.trim();
+  if (val) gpsLink = val;
+  document.getElementById('gps-edit-area').style.display = 'none';
+  actualizarGPSUI();
+}
+
+function getLocalidades() { return [...new Set(paradas.map(p => p.localidad))]; }
+function parseMin(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
+function addMin(t, m) { let x = parseMin(t)+Math.round(m); return String(Math.floor(x/60)%24).padStart(2,'0')+':'+String(x%60).padStart(2,'0'); }
+
+function calcETAs() {
+  const hs = document.getElementById('hora-salida').value;
+  const tz = parseInt(document.getElementById('tiempo-zona').value) || 50;
+  let c = addMin(hs, tz);
+  const etas = [];
+  for (let i = 0; i < paradas.length; i++) {
+    etas.push(c);
+    c = addMin(c, (VOL_TIEMPO[paradas[i].vol]||30) + (i < paradas.length-1 ? 12 : 0));
+  }
+  return { etas, retorno: c };
+}
+
+function recalcular() {
+  if (!paradas.length) return;
+  const { etas, retorno } = calcETAs();
+  const totalKg = paradas.reduce((s,p) => s+p.kg, 0);
+  document.getElementById('met-paradas').textContent = paradas.length;
+  document.getElementById('met-kg').textContent = totalKg > 0 ? totalKg.toLocaleString('es-AR',{maximumFractionDigits:0})+' kg' : '—';
+  document.getElementById('met-retorno').textContent = retorno;
+  renderParadasLogistica(etas);
+}
+
+function renderParadasLogistica(etas) {
+  const cont = document.getElementById('paradas-logistica');
+  cont.innerHTML = '';
+  let lastLoc = '';
+  const locs = getLocalidades();
+  paradas.forEach((p, i) => {
+    if (p.localidad !== lastLoc) {
+      lastLoc = p.localidad;
+      const lh = document.createElement('div');
+      lh.className = 'loc-header';
+      lh.innerHTML = `<div class="loc-line"></div><span class="loc-badge"><i class="ti ti-map-pin"></i> ${p.localidad}</span><div class="loc-line"></div>`;
+      cont.appendChild(lh);
+    }
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.draggable = true;
+    div.dataset.idx = i;
+    const isOpen = editOpen[i];
+    div.innerHTML = `
+      <div class="row">
+        <span class="drag-handle"><i class="ti ti-grip-vertical"></i></span>
+        <div class="pos-num">${i+1}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="client-name">${p.cliente}</div>
+          <div class="client-detail">${p.kg>0 ? p.kg.toLocaleString('es-AR')+' kg · ' : ''}${p.material}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <select class="vol-select" onchange="cambiarVol(${i},this.value)">
+            <option value="chico" ${p.vol==='chico'?'selected':''}>15 min</option>
+            <option value="mediano" ${p.vol==='mediano'?'selected':''}>30 min</option>
+            <option value="grande" ${p.vol==='grande'?'selected':''}>45 min</option>
+          </select>
+          <div style="text-align:right;min-width:38px;">
+            <div class="eta-time">${etas[i]}</div>
+            <div class="eta-label">ETA</div>
+          </div>
+          <button class="btn btn-icon" onclick="toggleEdit(${i})" style="color:${isOpen?'#1D4ED8':'#ccc'}">
+            <i class="ti ti-pencil"></i>
+          </button>
+        </div>
+      </div>
+      <div class="edit-panel ${isOpen?'open':''}">
+        <div class="edit-grid">
+          <div>
+            <div class="edit-label">Localidad</div>
+            <input class="edit-field" value="${p.localidad}" onchange="editarCampo(${i},'localidad',this.value)">
+            <div class="loc-suggestions">${locs.map(l=>`<span class="loc-pill" onclick="asignarLocalidad(${i},'${l}')">${l}</span>`).join('')}</div>
+          </div>
+          <div>
+            <div class="edit-label">Teléfono WhatsApp</div>
+            <input class="edit-field" value="${p.tel}" onchange="editarCampo(${i},'tel',this.value)" placeholder="549...">
+          </div>
+        </div>
+        <div>
+          <div class="edit-label">Material</div>
+          <input class="edit-field" value="${p.material}" onchange="editarCampo(${i},'material',this.value)">
+        </div>
+      </div>`;
+    div.addEventListener('dragstart', e => { dragSrc=i; div.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; });
+    div.addEventListener('dragend', () => { div.classList.remove('dragging'); document.querySelectorAll('.card').forEach(c=>c.classList.remove('drop-target')); });
+    div.addEventListener('dragover', e => { e.preventDefault(); div.classList.add('drop-target'); });
+    div.addEventListener('dragleave', () => div.classList.remove('drop-target'));
+    div.addEventListener('drop', e => {
+      e.preventDefault(); div.classList.remove('drop-target');
+      if (dragSrc===null || dragSrc===i) return;
+      const moved = paradas.splice(dragSrc,1)[0];
+      const movedEdit = editOpen.splice(dragSrc,1)[0];
+      paradas.splice(i,0,moved);
+      editOpen.splice(i,0,movedEdit);
+      dragSrc = null;
+      recalcular();
+    });
+    cont.appendChild(div);
+  });
+}
+
+function toggleEdit(i) { editOpen[i]=!editOpen[i]; recalcular(); }
+function editarCampo(i, campo, val) { paradas[i][campo]=val.trim(); if(campo==='localidad') recalcular(); }
+function asignarLocalidad(i, loc) { paradas[i].localidad=loc; recalcular(); }
+function cambiarVol(i, val) { paradas[i].vol=val; recalcular(); }
+
+function activarChofer() {
+  document.getElementById('tab-chofer').disabled = false;
+  document.getElementById('tab-cliente').disabled = false;
+  showScreen('chofer');
+  renderChofer();
+}
+
+function buildWSPMsg(etas, siguiente, entregados) {
+  const p = paradas[siguiente];
+  const restantes = Math.max(0, siguiente - entregados);
+  const gpsLine = gpsLink ? `\n\n📍 Seguí el camión en vivo:\n${gpsLink}` : '';
+  return `🚛 *Pedro Bravin S.A* — Tu pedido está en camino.\n\n${restantes>0 ? `Quedan ${restantes} entrega${restantes>1?'s':''} antes que vos.` : `Somos tu próxima entrega.`}\n⏱ Hora estimada de llegada: *${etas[siguiente]} hs*${gpsLine}\n\nAnte cualquier consulta comunicate con nosotros.`;
+}
+
+function renderChofer() {
+  const { etas } = calcETAs();
+  const cont = document.getElementById('paradas-chofer');
+  cont.innerHTML = '';
+  const siguiente = estado.findIndex(e => e==='pendiente');
+  let lastLoc = '';
+  paradas.forEach((p, i) => {
+    const esNext = i===siguiente, done = estado[i]==='entregado';
+    if (p.localidad !== lastLoc) {
+      lastLoc = p.localidad;
+      const lh = document.createElement('div');
+      lh.className = 'loc-header';
+      lh.innerHTML = `<div class="loc-line"></div><span class="loc-badge"><i class="ti ti-map-pin"></i> ${p.localidad}</span><div class="loc-line"></div>`;
+      cont.appendChild(lh);
+    }
+    const div = document.createElement('div');
+    div.innerHTML = `
+      <div class="card" style="border:${esNext?'2px solid #93C5FD':'1px solid #e5e5e5'};">
+        <div class="row">
+          <div class="pos-num ${done?'done':esNext?'next':''}">${done?'<i class="ti ti-check"></i>':i+1}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="client-name">${p.cliente}</div>
+            <div class="client-detail">${p.localidad} · ${p.material}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+            <span class="badge ${done?'badge-done':esNext?'badge-next':'badge-pending'}">${done?'Entregado':esNext?'Próxima':'Pendiente'}</span>
+            <div class="eta-time" style="font-size:12px;">${etas[i]}</div>
+          </div>
+        </div>
+        ${esNext&&!done ? `<div style="margin-top:8px;"><button class="btn btn-success btn-sm" onclick="confirmarEntrega(${i})"><i class="ti ti-circle-check"></i> Confirmar entrega</button></div>` : ''}
+      </div>`;
+    cont.appendChild(div);
+  });
+}
+
+function confirmarEntrega(i) {
+  estado[i] = 'entregado';
+  const entregados = estado.filter(e=>e==='entregado').length;
+  document.getElementById('global-status').textContent = entregados+' de '+paradas.length+' entregas';
+  const { etas } = calcETAs();
+  const siguiente = estado.findIndex(e=>e==='pendiente');
+  const notifArea = document.getElementById('wsp-notif-area');
+  if (siguiente !== -1) {
+    const p = paradas[siguiente];
+    const txt = buildWSPMsg(etas, siguiente, entregados);
+    notifArea.innerHTML = `
+      <div class="wsp-preview">
+        <div class="wsp-title"><i class="ti ti-brand-whatsapp"></i> Mensaje listo para ${p.cliente}</div>
+        <div class="wsp-msg">${txt}</div>
+        <a href="https://wa.me/${p.tel}?text=${encodeURIComponent(txt)}" target="_blank" class="wsp-btn"><i class="ti ti-brand-whatsapp"></i> Abrir WhatsApp y enviar</a>
+      </div>`;
+  } else {
+    notifArea.innerHTML = `<div class="wsp-preview"><div class="wsp-msg" style="text-align:center;"><i class="ti ti-circle-check" style="font-size:24px;display:block;margin-bottom:8px;"></i>Todas las entregas completadas.<br>El camión puede regresar a El Trébol.</div></div>`;
+  }
+  renderChofer();
+  renderClienteSelect();
+}
+
+function renderClienteSelect() {
+  const sel = document.getElementById('select-cliente');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  paradas.forEach((p,i) => { const o=document.createElement('option'); o.value=i; o.textContent=(i+1)+'. '+p.cliente+' — '+p.localidad; sel.appendChild(o); });
+  if (prev !== '') sel.value = prev;
+  renderCliente();
+}
+
+function renderCliente() {
+  const i = parseInt(document.getElementById('select-cliente').value) || 0;
+  const p = paradas[i];
+  const { etas } = calcETAs();
+  const done = estado[i] === 'entregado';
+  const siguiente = estado.findIndex(e=>e==='pendiente');
+  const restantes = done ? 0 : Math.max(0, i - siguiente);
+  document.getElementById('vista-cliente-card').innerHTML = `
+    <div class="card" style="text-align:center;padding:1.5rem;">
+      <div style="font-size:12px;color:#888;margin-bottom:4px;">Pedro Bravin S.A</div>
+      <div style="font-size:28px;font-weight:700;margin-bottom:4px;">${done?'Entregado ✓':etas[i]+' hs'}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:1.5rem;">${done?'Tu pedido fue entregado':'Hora estimada de llegada'}</div>
+      <hr class="divider">
+      <div style="margin-top:1rem;display:flex;justify-content:space-around;">
+        <div><div style="font-size:26px;font-weight:700;">${done?'✓':restantes}</div><div style="font-size:11px;color:#888;">Entregas antes</div></div>
+        <div><div style="font-size:26px;font-weight:700;">${i+1}</div><div style="font-size:11px;color:#888;">Tu posición</div></div>
+        <div><div style="font-size:26px;font-weight:700;">${paradas.length}</div><div style="font-size:11px;color:#888;">Total paradas</div></div>
+      </div>
+      <hr class="divider" style="margin-top:1rem;">
+      <div style="margin-top:1rem;font-size:12px;color:#888;margin-bottom:12px;"><i class="ti ti-package"></i> ${p.material}</div>
+      ${gpsLink ? `<a href="${gpsLink}" target="_blank" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:8px 18px;border-radius:8px;background:#EFF6FF;color:#1D4ED8;text-decoration:none;border:1px solid #BFDBFE;"><i class="ti ti-map-pin"></i> Ver camión en vivo</a>` : ''}
+    </div>`;
+}
+
+function onDragOver(e) { e.preventDefault(); document.getElementById('upload-zone').classList.add('dragover'); }
+function onDragLeave() { document.getElementById('upload-zone').classList.remove('dragover'); }
+function onDrop(e) { e.preventDefault(); document.getElementById('upload-zone').classList.remove('dragover'); const f=e.dataTransfer.files[0]; if(f&&f.type==='application/pdf') procesarPDF(f); }
+
+async function procesarPDF(file) {
+  document.getElementById('upload-zone').style.display = 'none';
+  const loading = document.getElementById('loading-bar');
+  loading.style.display = 'block';
+  document.getElementById('loading-msg').textContent = 'Leyendo el PDF...';
+  try {
+    const base64 = await new Promise((res,rej) => { const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=()=>rej(); r.readAsDataURL(file); });
+    document.getElementById('loading-msg').textContent = 'La IA está extrayendo las paradas...';
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000, messages:[{role:'user', content:[
+        {type:'document', source:{type:'base64', media_type:'application/pdf', data:base64}},
+        {type:'text', text:`Extraé todas las paradas de entrega de esta Hoja de Ruta. Respondé SOLO con un JSON array sin markdown ni texto extra. Cada objeto debe tener: cliente (string), localidad (string, ciudad de entrega), tel (string, teléfono si hay sino ""), material (string, descripción breve), kg (number, kg totales del cliente, 0 si no hay), vol (string: "chico" si kg<100, "mediano" si kg 100-400, "grande" si kg>400 o material largo). Agrupá todos los remitos del mismo cliente en una sola parada.`}
+      ]}]})
+    });
+    const data = await resp.json();
+    const txt = data.content.map(c=>c.text||'').join('');
+    cargarParadas(JSON.parse(txt.replace(/```json|```/g,'').trim()), file.name);
+  } catch(err) {
+    loading.innerHTML = `<div style="color:#EF4444;font-size:13px;padding:1rem;">Error procesando el PDF. Usá el botón de ejemplo.</div>`;
+  }
+}
+
+function cargarParadas(data, nombre) {
+  paradas = data.map(p => ({...p, tel: p.tel || TU_TEL}));
+  estado = paradas.map(() => 'pendiente');
+  editOpen = paradas.map(() => false);
+  const titulo = document.querySelector('.topbar-sub');
+  titulo.textContent = nombre ? nombre.replace('.pdf','') : 'Hoja de Ruta cargada';
+  document.getElementById('tab-logistica').disabled = false;
+  document.getElementById('loading-bar').style.display = 'none';
+  showScreen('logistica');
+  recalcular();
+}
+
+function usarDemoHR() { cargarParadas(DEMO, 'HR-00006997-Zona-Rafaela'); }
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name==='cliente') renderClienteSelect();
+}
+
+actualizarGPSUI();
+</script>
+</body>
+</html>

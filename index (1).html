@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedro Bravin — Gestión de Entregas</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh;}
+.topbar{background:#1a1a1a;padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;}
+.topbar-logo{font-size:15px;font-weight:600;color:#fff;}
+.topbar-sub{font-size:12px;color:#666;}
+.topbar-right{margin-left:auto;font-size:12px;color:#666;}
+.container{max-width:680px;margin:0 auto;padding:16px;}
+.tabs{display:flex;background:#fff;border-radius:10px;border:1px solid #e5e5e5;margin-bottom:16px;overflow:hidden;}
+.tab{flex:1;padding:10px 4px;font-size:12px;cursor:pointer;border:none;background:none;color:#888;border-bottom:2px solid transparent;}
+.tab.active{color:#1a1a1a;border-bottom:2px solid #1a1a1a;font-weight:600;background:#fafafa;}
+.tab:disabled{opacity:0.4;cursor:not-allowed;}
+.screen{display:none;}.screen.active{display:block;}
+.card{background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:12px;margin-bottom:8px;}
+.badge{display:inline-block;font-size:11px;padding:3px 8px;border-radius:6px;font-weight:500;}
+.badge-pending{background:#FEF3C7;color:#92400E;}
+.badge-done{background:#D1FAE5;color:#065F46;}
+.badge-next{background:#DBEAFE;color:#1E40AF;}
+.row{display:flex;align-items:center;gap:8px;}
+.pos-num{width:26px;height:26px;border-radius:50%;background:#f5f5f5;border:1px solid #e5e5e5;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#888;flex-shrink:0;}
+.pos-num.done{background:#D1FAE5;color:#065F46;border-color:#A7F3D0;}
+.pos-num.next{background:#DBEAFE;color:#1E40AF;border-color:#BFDBFE;}
+.client-name{font-size:13px;font-weight:600;}
+.client-detail{font-size:11px;color:#888;margin-top:1px;}
+.eta-time{font-size:14px;font-weight:600;}
+.eta-label{font-size:10px;color:#888;}
+.btn{padding:8px 16px;border-radius:8px;border:1px solid #d1d5db;background:none;font-size:13px;cursor:pointer;color:#1a1a1a;font-family:inherit;}
+.btn:active{transform:scale(0.98);}
+.btn-primary{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.btn-green{background:#16a34a;color:#fff;border-color:#16a34a;}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-icon{padding:5px 7px;font-size:12px;}
+.vol-select{font-size:12px;border:1px solid #e5e5e5;border-radius:6px;padding:3px 5px;background:#fff;font-family:inherit;}
+.time-input{font-size:13px;border:1px solid #e5e5e5;border-radius:8px;padding:5px 8px;background:#fff;font-family:inherit;}
+.edit-field{font-size:12px;border:1px solid #d1d5db;border-radius:6px;padding:4px 8px;background:#fafafa;width:100%;font-family:inherit;}
+.edit-field:focus{outline:none;border-color:#1a1a1a;background:#fff;}
+.divider{border:none;border-top:1px solid #f0f0f0;margin:8px 0;}
+.loc-header{display:flex;align-items:center;gap:8px;padding:8px 0 4px;margin-top:4px;}
+.loc-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;background:#EFF6FF;color:#1D4ED8;}
+.loc-line{flex:1;height:1px;background:#f0f0f0;}
+.drag-handle{cursor:grab;color:#ccc;font-size:16px;padding:0 2px;flex-shrink:0;}
+.drag-handle:active{cursor:grabbing;}
+.dragging{opacity:0.3;}
+.drop-target{border:2px dashed #93C5FD!important;}
+.upload-zone{border:2px dashed #d1d5db;border-radius:12px;padding:2.5rem 1rem;text-align:center;cursor:pointer;background:#fff;}
+.upload-zone:hover{background:#fafafa;}
+.upload-zone.dragover{background:#EFF6FF;border-color:#93C5FD;}
+.summary-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.metric{background:#fafafa;border-radius:8px;padding:10px;text-align:center;border:1px solid #f0f0f0;}
+.metric-val{font-size:17px;font-weight:700;}
+.metric-label{font-size:10px;color:#888;margin-top:2px;}
+.loading-wrap{display:none;background:#fff;border-radius:12px;padding:2rem;text-align:center;border:1px solid #e5e5e5;}
+.edit-panel{border-top:1px solid #f0f0f0;margin-top:8px;padding-top:8px;display:none;}
+.edit-panel.open{display:block;}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.edit-label{font-size:11px;color:#888;margin-bottom:3px;}
+.loc-suggestions{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;}
+.loc-pill{font-size:11px;padding:2px 8px;border-radius:20px;border:1px solid #e5e5e5;cursor:pointer;background:#fafafa;color:#888;}
+.loc-pill:hover{background:#EFF6FF;color:#1D4ED8;}
+.gps-block{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:12px;margin-bottom:14px;}
+.gps-row{display:flex;align-items:center;gap:8px;}
+.gps-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.gps-url{font-size:11px;color:#888;margin-top:6px;padding:6px 8px;background:#fafafa;border-radius:6px;border:1px solid #f0f0f0;word-break:break-all;}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid #e5e5e5;border-top-color:#1a1a1a;border-radius:50%;animation:spin 0.7s linear infinite;margin-bottom:8px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.info-bar{background:#EFF6FF;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#1E40AF;display:flex;align-items:flex-start;gap:8px;}
+
+/* LINK CHOFER */
+.chofer-link-card{background:#f0fdf4;border-radius:12px;border:1px solid #A7F3D0;padding:16px;margin-bottom:16px;}
+.chofer-link-title{font-size:13px;font-weight:600;color:#065F46;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.chofer-link-url{font-size:11px;color:#888;background:#fff;border-radius:6px;padding:8px;border:1px solid #e5e5e5;word-break:break-all;margin-bottom:10px;}
+.btn-copy{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;background:#fff;border:1px solid #d1d5db;font-size:12px;cursor:pointer;font-family:inherit;}
+.btn-copy.copied{background:#D1FAE5;border-color:#A7F3D0;color:#065F46;}
+
+/* MONITOR */
+.monitor-parada{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;margin-bottom:6px;border:1px solid #e5e5e5;}
+.mon-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.mon-num.done{background:#D1FAE5;color:#065F46;}
+.mon-num.pending{background:#f5f5f5;color:#aaa;}
+.mon-info{flex:1;}
+.mon-name{font-size:13px;font-weight:600;}
+.mon-loc{font-size:11px;color:#888;}
+.mon-eta{font-size:12px;font-weight:600;color:#888;}
+.mon-eta.done{color:#065F46;}
+
+@media(max-width:480px){
+  .container{padding:10px;}
+  .edit-grid{grid-template-columns:1fr;}
+  .tab{font-size:11px;padding:8px 2px;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-logo">Pedro Bravin S.A — Oficina</div>
+  </div>
+  <div class="topbar-right" id="global-status"></div>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="showScreen('carga')" id="tab-carga"><i class="ti ti-file-upload"></i> Cargar</button>
+    <button class="tab" onclick="showScreen('logistica')" id="tab-logistica" disabled><i class="ti ti-clipboard-list"></i> Logística</button>
+    <button class="tab" onclick="showScreen('monitor')" id="tab-monitor" disabled><i class="ti ti-eye"></i> Monitor</button>
+  </div>
+
+  <!-- CARGA -->
+  <div id="screen-carga" class="screen active">
+    <div class="gps-block">
+      <div class="gps-row">
+        <div class="gps-dot" id="gps-dot" style="background:#25D366;"></div>
+        <div style="flex:1;"><div style="font-size:13px;font-weight:500;">Link GPS Red Security <span style="font-size:11px;font-weight:400;color:#888;">(vista Simple)</span></div></div>
+        <button class="btn btn-sm" onclick="toggleGPSEdit()">Cambiar</button>
+      </div>
+      <div class="gps-url" id="gps-preview"></div>
+      <div id="gps-edit-area" style="display:none;margin-top:8px;">
+        <input id="gps-link-input" class="edit-field" placeholder="https://gps.redsecurity.com.ar/StreetZITSimple/..." style="margin-bottom:6px;">
+        <button class="btn btn-sm btn-primary" onclick="guardarGPS()">Guardar</button>
+      </div>
+    </div>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <i class="ti ti-file-type-pdf" style="font-size:36px;color:#ccc;display:block;margin-bottom:10px;"></i>
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Subí el PDF de la Hoja de Ruta</div>
+      <div style="font-size:13px;color:#888;">Hacé clic o arrastrá el archivo aquí</div>
+      <input type="file" id="file-input" accept=".pdf" style="display:none;" onchange="procesarPDF(this.files[0])">
+    </div>
+    <div class="loading-wrap" id="loading-bar">
+      <div class="spinner"></div>
+      <div id="loading-msg" style="font-size:13px;color:#888;">Analizando...</div>
+    </div>
+    <div style="margin-top:12px;text-align:center;">
+      <button class="btn btn-sm" onclick="usarDemoHR()" style="color:#888;font-size:12px;"><i class="ti ti-flask"></i> Usar HR 00006997 de ejemplo</button>
+    </div>
+  </div>
+
+  <!-- LOGISTICA -->
+  <div id="screen-logistica" class="screen">
+    <div class="summary-bar">
+      <div class="metric"><div class="metric-val" id="met-paradas">—</div><div class="metric-label">Paradas</div></div>
+      <div class="metric"><div class="metric-val" id="met-kg">—</div><div class="metric-label">Carga total</div></div>
+      <div class="metric"><div class="metric-val" id="met-retorno">—</div><div class="metric-label">Regreso est.</div></div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:12px;color:#888;">Salida:</span>
+        <input type="time" id="hora-salida" class="time-input" value="07:00" style="width:90px;" onchange="recalcular()">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:12px;color:#888;">Tiempo hasta primer destino:</span>
+        <input type="number" id="tiempo-zona" class="time-input" value="50" min="5" max="180" style="width:52px;" onchange="recalcular()">
+        <span style="font-size:11px;color:#888;">min</span>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#aaa;margin-bottom:8px;"><i class="ti ti-grip-vertical"></i> Arrastrá para ordenar · <i class="ti ti-pencil"></i> Editá localidad, teléfono y material</div>
+    <div id="paradas-logistica"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-green" onclick="generarLinkChofer()"><i class="ti ti-truck-delivery"></i> Generar link para el chofer</button>
+      <button class="btn" onclick="recalcular()"><i class="ti ti-refresh"></i> Recalcular</button>
+    </div>
+
+    <!-- LINK CHOFER -->
+    <div class="chofer-link-card" id="chofer-link-card" style="display:none;margin-top:16px;">
+      <div class="chofer-link-title"><i class="ti ti-truck-delivery"></i> Link del chofer listo</div>
+      <div class="chofer-link-url" id="chofer-link-url"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn-copy" id="btn-copy" onclick="copiarLink()"><i class="ti ti-copy"></i> Copiar link</button>
+        <a id="btn-wsp-chofer" href="#" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;border-color:#25D366;text-decoration:none;"><i class="ti ti-brand-whatsapp"></i> Enviar al chofer</a>
+        <button class="btn btn-sm" onclick="showScreen('monitor');document.getElementById('tab-monitor').disabled=false;"><i class="ti ti-eye"></i> Ver monitor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MONITOR -->
+  <div id="screen-monitor" class="screen">
+    <div class="info-bar"><i class="ti ti-refresh"></i> Esta pantalla muestra el estado actual. Actualizá la página del chofer para ver cambios en tiempo real.</div>
+    <div id="monitor-paradas"></div>
+  </div>
+
+</div>
+
+<script>
+const GPS_DEFAULT='https://gps.redsecurity.com.ar/StreetZITSimple/index.html?GUID=2c0fe822-49b1-4710-ac12-f07cbf289e4a';
+const VOL_TIEMPO={chico:15,mediano:30,grande:45};
+let paradas=[];
+let editOpen=[];
+let dragSrc=null;
+let gpsLink=GPS_DEFAULT;
+
+const DEMO=[
+  {cliente:"ANSIL S.A",localidad:"Angélica",tel:"",material:"Alambre p/sol. 15kg",kg:71,vol:"chico"},
+  {cliente:"BAL PLAS S.A",localidad:"Angélica",tel:"3492672997",material:"Hierro ADN 6-10mm",kg:22.2,vol:"mediano"},
+  {cliente:"FILIPPONI J.C",localidad:"Cañada Rosquín",tel:"",material:"Hierro, perfiles, chapas, tanques",kg:999,vol:"grande"},
+  {cliente:"NONO CARLOS SA",localidad:"Cañada Rosquín",tel:"3401415200",material:"Estructural + planchuela",kg:589,vol:"grande"},
+  {cliente:"GALVAN MAXIMILIANO",localidad:"Rafaela",tel:"",material:"Estructural L/C 120x120",kg:45.3,vol:"mediano"},
+  {cliente:"DALMAZZO J.G",localidad:"Rafaela",tel:"",material:"Perfil C galv. 12mt",kg:490.6,vol:"grande"},
+  {cliente:"NOVARA RODRIGO",localidad:"Rafaela",tel:"",material:"Hierro ADN + Perfil C galv.",kg:1837,vol:"grande"},
+  {cliente:"METALURGICA PUEBLO VIEJO",localidad:"Villa Perper (Entre Ríos)",tel:"3492267827",material:"Alambre, ángulos, chapas, caños",kg:2954,vol:"grande"},
+  {cliente:"REDES DEL NORTE SA",localidad:"Rafaela",tel:"3492521927",material:"Chapa galv. lisa",kg:367.5,vol:"grande"},
+  {cliente:"QUINTERO J.F",localidad:"Sa Pereira",tel:"3404529521",material:"Cincalum + perfiles + hierro",kg:862.5,vol:"grande"},
+];
+
+function actualizarGPSUI(){
+  const ok=gpsLink&&gpsLink.includes('redsecurity')&&gpsLink.includes('GUID');
+  document.getElementById('gps-dot').style.background=ok?'#25D366':'#EF4444';
+  document.getElementById('gps-preview').textContent=gpsLink||'Sin link configurado';
+}
+function toggleGPSEdit(){const a=document.getElementById('gps-edit-area');const v=a.style.display!=='none';a.style.display=v?'none':'block';if(!v)document.getElementById('gps-link-input').value=gpsLink;}
+function guardarGPS(){const v=document.getElementById('gps-link-input').value.trim();if(v)gpsLink=v;document.getElementById('gps-edit-area').style.display='none';actualizarGPSUI();}
+
+function getLocalidades(){return[...new Set(paradas.map(p=>p.localidad))];}
+function parseMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+function addMin(t,m){let x=parseMin(t)+Math.round(m);return String(Math.floor(x/60)%24).padStart(2,'0')+':'+String(x%60).padStart(2,'0');}
+
+function calcETAs(){
+  const hs=document.getElementById('hora-salida').value;
+  const tz=parseInt(document.getElementById('tiempo-zona').value)||50;
+  let c=addMin(hs,tz);
+  return paradas.map((p,i)=>{const eta=c;c=addMin(c,(VOL_TIEMPO[p.vol]||30)+(i<paradas.length-1?12:0));return eta;});
+}
+
+function recalcular(){
+  if(!paradas.length)return;
+  const etas=calcETAs();
+  const totalKg=paradas.reduce((s,p)=>s+p.kg,0);
+  document.getElementById('met-paradas').textContent=paradas.length;
+  document.getElementById('met-kg').textContent=totalKg>0?totalKg.toLocaleString('es-AR',{maximumFractionDigits:0})+' kg':'—';
+  document.getElementById('met-retorno').textContent=etas[etas.length-1]?addMin(etas[etas.length-1],(VOL_TIEMPO[paradas[paradas.length-1].vol]||30)):'—';
+  renderParadasLogistica(etas);
+  document.getElementById('chofer-link-card').style.display='none';
+}
+
+function renderParadasLogistica(etas){
+  const cont=document.getElementById('paradas-logistica');
+  cont.innerHTML='';
+  let lastLoc='';
+  const locs=getLocalidades();
+  paradas.forEach((p,i)=>{
+    if(p.localidad!==lastLoc){
+      lastLoc=p.localidad;
+      const lh=document.createElement('div');
+      lh.className='loc-header';
+      lh.innerHTML=`<div class="loc-line"></div><span class="loc-badge"><i class="ti ti-map-pin"></i> ${p.localidad}</span><div class="loc-line"></div>`;
+      cont.appendChild(lh);
+    }
+    const div=document.createElement('div');
+    div.className='card';div.draggable=true;div.dataset.idx=i;
+    const isOpen=editOpen[i];
+    div.innerHTML=`
+      <div class="row">
+        <span class="drag-handle"><i class="ti ti-grip-vertical"></i></span>
+        <div class="pos-num">${i+1}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="client-name">${p.cliente}</div>
+          <div class="client-detail">${p.kg>0?p.kg.toLocaleString('es-AR')+' kg · ':''}${p.material}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <select class="vol-select" onchange="cambiarVol(${i},this.value)">
+            <option value="chico" ${p.vol==='chico'?'selected':''}>15 min</option>
+            <option value="mediano" ${p.vol==='mediano'?'selected':''}>30 min</option>
+            <option value="grande" ${p.vol==='grande'?'selected':''}>45 min</option>
+          </select>
+          <div style="text-align:right;min-width:38px;"><div class="eta-time">${etas[i]}</div><div class="eta-label">ETA</div></div>
+          <button class="btn btn-icon" onclick="toggleEdit(${i})" style="color:${isOpen?'#1D4ED8':'#ccc'}"><i class="ti ti-pencil"></i></button>
+        </div>
+      </div>
+      <div class="edit-panel ${isOpen?'open':''}">
+        <div class="edit-grid">
+          <div>
+            <div class="edit-label">Localidad</div>
+            <input class="edit-field" value="${p.localidad}" onchange="editarCampo(${i},'localidad',this.value)">
+            <div class="loc-suggestions">${locs.map(l=>`<span class="loc-pill" onclick="asignarLocalidad(${i},'${l}')">${l}</span>`).join('')}</div>
+          </div>
+          <div>
+            <div class="edit-label">Teléfono WhatsApp (sin +, sin 0)</div>
+            <input class="edit-field" value="${p.tel}" onchange="editarCampo(${i},'tel',this.value)" placeholder="549...">
+          </div>
+        </div>
+        <div><div class="edit-label">Material</div><input class="edit-field" value="${p.material}" onchange="editarCampo(${i},'material',this.value)"></div>
+      </div>`;
+    div.addEventListener('dragstart',e=>{dragSrc=i;div.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+    div.addEventListener('dragend',()=>{div.classList.remove('dragging');document.querySelectorAll('.card').forEach(c=>c.classList.remove('drop-target'));});
+    div.addEventListener('dragover',e=>{e.preventDefault();div.classList.add('drop-target');});
+    div.addEventListener('dragleave',()=>div.classList.remove('drop-target'));
+    div.addEventListener('drop',e=>{
+      e.preventDefault();div.classList.remove('drop-target');
+      if(dragSrc===null||dragSrc===i)return;
+      const m=paradas.splice(dragSrc,1)[0];const me=editOpen.splice(dragSrc,1)[0];
+      paradas.splice(i,0,m);editOpen.splice(i,0,me);dragSrc=null;recalcular();
+    });
+    cont.appendChild(div);
+  });
+}
+
+function toggleEdit(i){editOpen[i]=!editOpen[i];recalcular();}
+function editarCampo(i,c,v){paradas[i][c]=v.trim();if(c==='localidad')recalcular();}
+function asignarLocalidad(i,l){paradas[i].localidad=l;recalcular();}
+function cambiarVol(i,v){paradas[i].vol=v;recalcular();}
+
+function generarLinkChofer(){
+  const hs=document.getElementById('hora-salida').value;
+  const tz=parseInt(document.getElementById('tiempo-zona').value)||50;
+  const hrData={paradas,horaSalida:hs,tiempoZona:tz,gpsLink,estado:paradas.map(()=>'pendiente')};
+  const encoded=encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(hrData)))));
+  const base=window.location.href.replace('index.html','').replace(/\?.*$/,'').replace(/\/$/, '');
+  const link=base+'/chofer.html?d='+encoded;
+  document.getElementById('chofer-link-url').textContent=link;
+  document.getElementById('btn-wsp-chofer').href='https://wa.me/?text='+encodeURIComponent('Hola, tu hoja de ruta de hoy: '+link);
+  document.getElementById('chofer-link-card').style.display='block';
+  document.getElementById('tab-monitor').disabled=false;
+  renderMonitor();
+}
+
+function copiarLink(){
+  const link=document.getElementById('chofer-link-url').textContent;
+  navigator.clipboard.writeText(link).then(()=>{
+    const btn=document.getElementById('btn-copy');
+    btn.classList.add('copied');
+    btn.innerHTML='<i class="ti ti-check"></i> Copiado';
+    setTimeout(()=>{btn.classList.remove('copied');btn.innerHTML='<i class="ti ti-copy"></i> Copiar link';},2000);
+  });
+}
+
+function renderMonitor(){
+  const etas=calcETAs();
+  const cont=document.getElementById('monitor-paradas');
+  cont.innerHTML='';
+  let lastLoc='';
+  paradas.forEach((p,i)=>{
+    if(p.localidad!==lastLoc){
+      lastLoc=p.localidad;
+      const lh=document.createElement('div');
+      lh.className='loc-header';
+      lh.innerHTML=`<div class="loc-line"></div><span class="loc-badge"><i class="ti ti-map-pin"></i> ${p.localidad}</span><div class="loc-line"></div>`;
+      cont.appendChild(lh);
+    }
+    const div=document.createElement('div');
+    div.className='monitor-parada';
+    div.innerHTML=`
+      <div class="mon-num pending">${i+1}</div>
+      <div class="mon-info">
+        <div class="mon-name">${p.cliente}</div>
+        <div class="mon-loc">${p.localidad} · ${p.material}</div>
+      </div>
+      <div class="mon-eta">${etas[i]}</div>`;
+    cont.appendChild(div);
+  });
+}
+
+function onDragOver(e){e.preventDefault();document.getElementById('upload-zone').classList.add('dragover');}
+function onDragLeave(){document.getElementById('upload-zone').classList.remove('dragover');}
+function onDrop(e){e.preventDefault();document.getElementById('upload-zone').classList.remove('dragover');const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')procesarPDF(f);}
+
+async function procesarPDF(file){
+  document.getElementById('upload-zone').style.display='none';
+  const loading=document.getElementById('loading-bar');loading.style.display='block';
+  document.getElementById('loading-msg').textContent='Leyendo el PDF...';
+  try{
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej();r.readAsDataURL(file);});
+    document.getElementById('loading-msg').textContent='La IA está extrayendo las paradas...';
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
+        {type:'text',text:`Extraé todas las paradas de entrega de esta Hoja de Ruta. Respondé SOLO con un JSON array sin markdown ni texto extra. Cada objeto debe tener: cliente (string), localidad (string, ciudad de entrega), tel (string, teléfono si hay sino ""), material (string, descripción breve), kg (number, kg totales del cliente, 0 si no hay), vol (string: "chico" si kg<100, "mediano" si kg 100-400, "grande" si kg>400 o material largo). Agrupá todos los remitos del mismo cliente en una sola parada.`}
+      ]}]})
+    });
+    const data=await resp.json();
+    const txt=data.content.map(c=>c.text||'').join('');
+    cargarParadas(JSON.parse(txt.replace(/```json|```/g,'').trim()),file.name);
+  }catch(err){
+    loading.innerHTML=`<div style="color:#EF4444;font-size:13px;padding:1rem;">Error procesando el PDF. Usá el botón de ejemplo.</div>`;
+  }
+}
+
+function cargarParadas(data,nombre){
+  paradas=data.map(p=>({...p}));
+  editOpen=paradas.map(()=>false);
+  document.querySelector('.topbar-sub') && (document.querySelector('.topbar-sub').textContent=nombre?nombre.replace('.pdf',''):'');
+  document.getElementById('tab-logistica').disabled=false;
+  document.getElementById('loading-bar').style.display='none';
+  showScreen('logistica');recalcular();
+}
+
+function usarDemoHR(){cargarParadas(DEMO,'HR-00006997-Zona-Rafaela');}
+
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+actualizarGPSUI();
+</script>
+</body>
+</html>

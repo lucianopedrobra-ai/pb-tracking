@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pedro Bravin — Acceso</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a1a;color:#1a1a1a;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+.login-card{background:#fff;border-radius:20px;padding:32px 24px;width:100%;max-width:380px;}
+.logo{text-align:center;margin-bottom:28px;}
+.logo-title{font-size:22px;font-weight:700;color:#1a1a1a;}
+.logo-sub{font-size:13px;color:#888;margin-top:4px;}
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;font-weight:600;color:#888;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;}
+.field input{width:100%;padding:12px 14px;border:1px solid #e5e5e5;border-radius:10px;font-size:15px;font-family:inherit;background:#fafafa;}
+.field input:focus{outline:none;border-color:#1a1a1a;background:#fff;}
+.btn-login{width:100%;padding:14px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:6px;}
+.btn-login:active{transform:scale(0.98);}
+.error{background:#FEE2E2;color:#991B1B;border-radius:8px;padding:10px 12px;font-size:13px;margin-bottom:12px;display:none;}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="login-card">
+  <div class="logo">
+    <div class="logo-title">Pedro Bravin S.A</div>
+    <div class="logo-sub">Sistema de entregas</div>
+  </div>
+  <div class="error" id="error-msg"></div>
+  <div class="field">
+    <label>Email</label>
+    <input type="email" id="email" placeholder="usuario@pedrobravin.com.ar" autocomplete="email">
+  </div>
+  <div class="field">
+    <label>Contraseña</label>
+    <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+  </div>
+  <button class="btn-login" id="btn-login" onclick="login()">Ingresar</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA9KkDU1wFRvfH7sIvXe0XWlT2zMdr2PP4",
+  authDomain: "pedro-bravin-tracking.firebaseapp.com",
+  databaseURL: "https://pedro-bravin-tracking-default-rtdb.firebaseio.com",
+  projectId: "pedro-bravin-tracking",
+  storageBucket: "pedro-bravin-tracking.firebasestorage.app",
+  messagingSenderId: "220258990649",
+  appId: "1:220258990649:web:92db48ae42e7e1743e6be8"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+onAuthStateChanged(auth, async user => {
+  if (user) { await redirigir(user.uid); }
+});
+
+window.login = async function(){
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('btn-login');
+  const err = document.getElementById('error-msg');
+  err.style.display = 'none';
+  btn.innerHTML = '<span class="spinner"></span>Ingresando...';
+  btn.disabled = true;
+  try {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    await redirigir(cred.user.uid);
+  } catch(e) {
+    err.textContent = 'Email o contraseña incorrectos';
+    err.style.display = 'block';
+    btn.innerHTML = 'Ingresar';
+    btn.disabled = false;
+  }
+};
+
+async function redirigir(uid){
+  const snap = await get(ref(db, 'usuarios/' + uid));
+  if (!snap.exists()){ window.location.href = 'oficina.html'; return; }
+  const u = snap.val();
+  if (u.rol === 'oficina') window.location.href = 'oficina.html';
+  else window.location.href = 'chofer.html';
+}
+
+document.getElementById('password').addEventListener('keydown', e => { if(e.key==='Enter') window.login(); });
+</script>
+</body>
+</html>

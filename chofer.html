@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Pedro Bravin — Reparto</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f0f0;color:#1a1a1a;min-height:100vh;display:flex;flex-direction:column;}
+
+/* TOPBAR */
+.topbar{background:#1a1a1a;padding:0 16px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.topbar-brand{display:flex;align-items:center;gap:10px;}
+.topbar-pb{width:32px;height:32px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#1a1a1a;}
+.topbar-name{font-size:13px;font-weight:700;color:#fff;}
+.topbar-prog{font-size:12px;color:#888;font-weight:600;}
+.btn-out{font-size:11px;color:#888;background:none;border:1px solid #444;border-radius:5px;padding:3px 8px;cursor:pointer;font-family:inherit;}
+
+/* PROGRESS */
+.progress-wrap{background:#2a2a2a;padding:0 0 6px;flex-shrink:0;}
+.progress-bar{background:#333;height:3px;overflow:hidden;}
+.progress-fill{background:#25D366;height:100%;transition:width 0.5s ease;}
+
+.container{flex:1;padding:14px 14px 24px;max-width:480px;margin:0 auto;width:100%;}
+
+/* LOADING / EMPTY */
+.center-screen{text-align:center;padding:4rem 1rem;}
+.spinner{display:inline-block;width:28px;height:28px;border:3px solid #e5e5e5;border-top-color:#1a1a1a;border-radius:50%;animation:spin 0.7s linear infinite;margin-bottom:10px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* DONE */
+.done-screen{display:none;}
+.done-icon{font-size:52px;margin-bottom:12px;text-align:center;}
+.done-title{font-size:22px;font-weight:700;margin-bottom:6px;text-align:center;}
+.done-sub{font-size:14px;color:#888;text-align:center;}
+
+/* HISTORIAL */
+.hist-item{background:#fff;border-radius:10px;padding:12px;margin-bottom:8px;border:1px solid #e5e5e5;}
+.hist-title{font-size:13px;font-weight:700;margin-bottom:2px;}
+.hist-sub{font-size:11px;color:#888;}
+
+/* PARADA */
+.parada-main{background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;border:1px solid #e5e5e5;}
+.parada-loc{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;background:#1a1a1a;color:#fff;margin-bottom:14px;letter-spacing:0.04em;text-transform:uppercase;}
+.parada-counter{font-size:11px;font-weight:700;color:#888;letter-spacing:0.08em;text-transform:uppercase;text-align:center;margin-bottom:8px;}
+.parada-cliente{font-size:20px;font-weight:700;color:#1a1a1a;margin-bottom:5px;line-height:1.2;}
+.parada-material{font-size:13px;color:#666;margin-bottom:14px;line-height:1.5;}
+.info-row{display:flex;align-items:center;gap:8px;font-size:14px;padding:10px 12px;background:#f8f8f8;border-radius:10px;margin-bottom:6px;}
+.info-row strong{color:#1a1a1a;}
+
+/* BOTONES PRINCIPALES */
+.btn-confirm{width:100%;padding:18px;font-size:18px;font-weight:700;background:#1a1a1a;color:#fff;border:none;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;font-family:inherit;-webkit-tap-highlight-color:transparent;margin-bottom:10px;}
+.btn-confirm:active{transform:scale(0.97);}
+.btn-warn{width:100%;padding:13px;font-size:14px;font-weight:600;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-family:inherit;-webkit-tap-highlight-color:transparent;margin-bottom:8px;border:1.5px solid;}
+.btn-warn.yellow{background:#FEF3C7;color:#92400E;border-color:#FDE68A;}
+.btn-warn.red{background:#FEE2E2;color:#991B1B;border-color:#FECACA;}
+.btn-warn:active{transform:scale(0.97);}
+
+/* ACCIONES SECUNDARIAS */
+.actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
+.btn-action{padding:11px;font-size:12px;font-weight:600;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;font-family:inherit;-webkit-tap-highlight-color:transparent;border:1.5px solid;background:#fff;}
+.btn-action.cobro{color:#1a1a1a;border-color:#e5e5e5;}
+.btn-action.recepcion{color:#065F46;border-color:#A7F3D0;}
+.btn-action:active{transform:scale(0.97);}
+
+/* ANTERIORES */
+.ant-section{margin-top:14px;}
+.ant-title{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;}
+.ant-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fff;border-radius:10px;margin-bottom:5px;border:1px solid #f0f0f0;cursor:pointer;}
+.ant-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;}
+.ant-dot.done{background:#1a1a1a;color:#fff;}
+.ant-dot.bad{background:#FEE2E2;color:#991B1B;}
+.ant-rev{font-size:10px;color:#1D4ED8;margin-left:auto;font-weight:600;}
+
+/* REGISTROS */
+.reg-section{margin-top:12px;}
+.reg-title{font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px;}
+.reg-item{background:#fff;border-radius:10px;padding:10px 12px;margin-bottom:6px;}
+.reg-item.cobro{border:1px solid #e5e5e5;}
+.reg-item.recepcion{border:1px solid #A7F3D0;}
+.badge-num{font-size:10px;padding:1px 6px;border-radius:4px;font-weight:700;}
+.badge-cobro{background:#f5f5f5;color:#888;}
+.badge-rec{background:#F0FDF4;color:#065F46;}
+
+/* WSP */
+.wsp-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:10px;border-left:4px solid #25D366;}
+.wsp-body{font-size:13px;color:#1a1a1a;line-height:1.7;white-space:pre-line;margin-bottom:12px;}
+.btn-wsp{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;font-size:15px;font-weight:700;background:#25D366;color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent;margin-bottom:8px;}
+.btn-omitir{width:100%;padding:11px;font-size:13px;color:#888;background:none;border:1px solid #e5e5e5;border-radius:10px;cursor:pointer;font-family:inherit;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.55);z-index:200;align-items:flex-end;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;padding:24px 20px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:16px;}
+.modal-opt{width:100%;padding:14px;font-size:15px;font-weight:600;border-radius:12px;cursor:pointer;font-family:inherit;margin-bottom:8px;border:1.5px solid #e5e5e5;background:#fafafa;display:flex;align-items:center;gap:12px;-webkit-tap-highlight-color:transparent;}
+.modal-opt:active{background:#f0f0f0;}
+.modal-cancel{background:none;color:#888;border:none;width:100%;padding:12px;font-size:14px;cursor:pointer;font-family:inherit;margin-top:4px;}
+.inp-m{width:100%;padding:11px 12px;border:1.5px solid #e5e5e5;border-radius:10px;font-size:15px;font-family:inherit;background:#fafafa;margin-bottom:10px;}
+.inp-m:focus{outline:none;border-color:#1a1a1a;background:#fff;}
+.lbl-m{font-size:11px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;display:block;}
+.lbl-m.req{color:#DC2626;}
+.tipo-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
+.tipo-btn{padding:9px 4px;font-size:11px;font-weight:600;border:1.5px solid #e5e5e5;border-radius:8px;background:#fafafa;cursor:pointer;font-family:inherit;text-align:center;}
+.tipo-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;}
+.estado-btn{padding:9px 4px;font-size:11px;font-weight:600;border:1.5px solid #e5e5e5;border-radius:8px;background:#fafafa;color:#888;cursor:pointer;font-family:inherit;}
+.cond-row{display:flex;align-items:flex-start;gap:10px;padding:8px;border-radius:8px;cursor:pointer;border:1.5px solid #e5e5e5;background:#fff;margin-bottom:6px;}
+.cond-icon{width:22px;height:22px;border-radius:50%;background:#f5f5f5;border:2px solid #d1d5db;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;margin-top:1px;}
+.foto-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px;}
+.foto-slot{aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;border:2px dashed #e5e5e5;background:#fafafa;}
+.foto-slot.primary{border-color:#DC2626;background:#FEF2F2;}
+.foto-slot.ready{border-color:#A7F3D0;background:#F0FDF4;}
+.info-box{border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;display:flex;align-items:flex-start;gap:8px;}
+.info-box.purple{background:#F5F3FF;color:#7C3AED;border-left:3px solid #7C3AED;}
+.info-box.amber{background:#FEF3C7;color:#92400E;border-left:3px solid #F59E0B;}
+.info-box.red{background:#FEE2E2;color:#991B1B;border-left:3px solid #DC2626;}
+.info-box.green{background:#F0FDF4;color:#065F46;border-left:3px solid #16a34a;}
+.info-box.blue{background:#EFF6FF;color:#1E40AF;border-left:3px solid #3B82F6;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-pb">PB</div>
+    <div class="topbar-name">PEDRO BRAVIN S.A</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span class="topbar-prog" id="top-prog"></span>
+    <button class="btn-out" onclick="cerrarSesion()">Salir</button>
+  </div>
+</div>
+
+<div class="progress-wrap">
+  <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+</div>
+
+<div class="container">
+
+  <!-- LOADING -->
+  <div class="center-screen" id="loading-screen">
+    <div class="spinner"></div>
+    <div style="font-size:14px;color:#888;">Cargando...</div>
+  </div>
+
+  <!-- SIN VIAJE -->
+  <div id="sin-viaje" style="display:none;" class="center-screen">
+    <div style="font-size:48px;margin-bottom:14px;">📋</div>
+    <div style="font-size:18px;font-weight:700;margin-bottom:8px;">Sin viaje asignado</div>
+    <div style="font-size:14px;color:#888;">La oficina todavía no publicó tu viaje de hoy.</div>
+  </div>
+
+  <!-- WSP -->
+  <div id="wsp-screen" style="display:none;">
+    <div class="wsp-card">
+      <div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:8px;" id="wsp-header"></div>
+      <div class="wsp-body" id="wsp-body"></div>
+      <a id="wsp-link" href="#" target="_blank" class="btn-wsp"><i class="ti ti-brand-whatsapp"></i> Enviar WhatsApp</a>
+    </div>
+    <button class="btn-omitir" onclick="cerrarWSP()">Omitir y continuar</button>
+  </div>
+
+  <!-- PARADA -->
+  <div id="parada-screen" style="display:none;">
+    <div class="parada-counter" id="parada-counter"></div>
+    <div class="parada-main">
+      <div><span class="parada-loc"><i class="ti ti-map-pin"></i> <span id="p-loc"></span></span></div>
+      <div class="parada-cliente" id="p-cliente"></div>
+      <div class="parada-material" id="p-material"></div>
+      <div class="info-row"><i class="ti ti-clock" style="font-size:18px;color:#888;"></i> ETA: <strong id="p-eta"></strong></div>
+      <div class="info-row" id="p-tel-row" style="display:none;"><i class="ti ti-phone" style="font-size:16px;color:#888;"></i> <span id="p-tel"></span></div>
+    </div>
+    <button class="btn-confirm" onclick="accion('entregado')"><i class="ti ti-circle-check" style="font-size:22px;"></i> CONFIRMAR ENTREGA</button>
+    <button class="btn-warn yellow" onclick="accion('salteado')"><i class="ti ti-arrow-right"></i> Saltear — volver después</button>
+    <button class="btn-warn red" onclick="abrirModalNoEntrega()"><i class="ti ti-x"></i> No se pudo entregar</button>
+    <div class="actions-grid">
+      <button class="btn-action cobro" onclick="abrirCobro()"><i class="ti ti-cash"></i> Cobro</button>
+      <button class="btn-action recepcion" onclick="abrirRecepcion()"><i class="ti ti-package-import"></i> Recepción</button>
+    </div>
+    <div class="ant-section" id="anteriores"></div>
+  </div>
+
+  <!-- REGISTROS (cobros + recepciones) -->
+  <div id="cobros-resumen" style="display:none;margin-top:14px;">
+    <div class="reg-title">Cobros registrados</div>
+    <div id="cobros-lista"></div>
+  </div>
+  <div id="recs-resumen" style="display:none;margin-top:10px;">
+    <div class="reg-title">Recepciones registradas</div>
+    <div id="recs-lista"></div>
+  </div>
+
+  <!-- DONE -->
+  <div class="done-screen" id="done-screen">
+    <div style="text-align:center;padding:2rem 0 1.5rem;">
+      <div class="done-icon">✅</div>
+      <div class="done-title">¡Todas las entregas!</div>
+      <div class="done-sub">Podés regresar a El Trébol</div>
+    </div>
+
+    <!-- Cierre -->
+    <div id="cierre-form" style="background:#fff;border-radius:14px;padding:16px;border:1px solid #e5e5e5;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;"><i class="ti ti-message"></i> ¿Alguna observación del viaje?</div>
+      <textarea id="obs-viaje" style="width:100%;padding:10px 12px;border:1.5px solid #e5e5e5;border-radius:10px;font-size:14px;font-family:inherit;background:#fafafa;height:80px;resize:none;margin-bottom:10px;" placeholder="Incidentes, demoras, comentarios para oficina... (opcional)"></textarea>
+      <button onclick="cerrarViaje()" id="btn-cerrar-viaje" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#1a1a1a;color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="ti ti-lock-check"></i> Cerrar viaje</button>
+    </div>
+    <div id="viaje-cerrado" style="display:none;text-align:center;background:#F0FDF4;border-radius:12px;padding:14px;border:1px solid #A7F3D0;margin-bottom:12px;">
+      <div style="font-size:14px;font-weight:700;color:#065F46;">Viaje cerrado ✓</div>
+      <div style="font-size:12px;color:#888;margin-top:3px;">Podés consultar el historial abajo</div>
+    </div>
+
+    <!-- Historial consulta -->
+    <div id="historial-section" style="display:none;">
+      <div class="reg-title" style="margin-top:4px;">Historial del viaje</div>
+      <div id="historial-cobros"></div>
+      <div id="historial-recs"></div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Modal no entrega -->
+<div class="modal-overlay" id="modal-no">
+  <div class="modal-sheet">
+    <div class="modal-title">¿Por qué no se pudo entregar?</div>
+    <button class="modal-opt" onclick="accion('no_estaba')"><span style="font-size:22px;">🚪</span> Cliente no estaba</button>
+    <button class="modal-opt" onclick="accion('rechazo_total')"><span style="font-size:22px;">❌</span> Rechazo total</button>
+    <button class="modal-opt" onclick="accion('rechazo_parcial')"><span style="font-size:22px;">⚠️</span> Rechazo parcial</button>
+    <button class="modal-cancel" onclick="cerrarModalNo()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal revertir -->
+<div class="modal-overlay" id="modal-rev">
+  <div class="modal-sheet">
+    <div class="modal-title" id="rev-titulo">¿Revertir esta parada?</div>
+    <div style="font-size:13px;color:#888;margin-bottom:16px;">La parada vuelve a pendiente.</div>
+    <button class="modal-opt" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;" onclick="confirmarRevertir()"><i class="ti ti-refresh" style="font-size:20px;"></i> Sí, revertir</button>
+    <button class="modal-cancel" onclick="cerrarModalRev()">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal cobro -->
+<div class="modal-overlay" id="modal-cobro">
+  <div class="modal-sheet">
+    <div class="modal-title"><i class="ti ti-cash"></i> Registrar cobro</div>
+    <div class="info-box green"><i class="ti ti-lock"></i> Comprobante inmutable — numerado automáticamente COB-</div>
+    <div><label class="lbl-m">Cliente *</label><input id="cobro-cliente" class="inp-m" placeholder="Nombre del cliente"></div>
+    <div><label class="lbl-m">Teléfono WhatsApp (para comprobante)</label><input id="cobro-tel" type="tel" class="inp-m" placeholder="549..."></div>
+    <div><label class="lbl-m">Tipo de cobro *</label>
+      <div class="tipo-grid">
+        <button class="tipo-btn active" onclick="selTipo('Efectivo',this)">💵 Efectivo</button>
+        <button class="tipo-btn" onclick="selTipo('Cheque',this)">📄 Cheque</button>
+        <button class="tipo-btn" onclick="selTipo('Sobre cerrado',this)">✉️ Sobre</button>
+      </div>
+    </div>
+    <div id="cobro-monto-wrap"><label class="lbl-m">Monto $ *</label><input id="cobro-monto" type="number" class="inp-m" placeholder="0,00"></div>
+    <div><label class="lbl-m">Observaciones</label><input id="cobro-obs" class="inp-m" placeholder="Cheque nro, fecha..."></div>
+    <div id="cobro-error" style="color:#DC2626;font-size:12px;margin-bottom:8px;display:none;"></div>
+    <button onclick="guardarCobro()" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#1a1a1a;color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit;margin-bottom:8px;">Registrar cobro</button>
+    <button onclick="cerrarCobro()" class="btn-omitir">Cancelar</button>
+  </div>
+</div>
+
+<!-- Modal recepción (unifica devolución + recepción) -->
+<div class="modal-overlay" id="modal-rec">
+  <div class="modal-sheet" style="max-height:92vh;overflow-y:auto;">
+    <div class="modal-title" style="color:#065F46;"><i class="ti ti-package-import"></i> Recepción de mercadería</div>
+
+    <!-- PASO 1: condiciones -->
+    <div id="rec-paso1">
+      <div class="info-box amber"><i class="ti ti-alert-triangle"></i><div>Verificá estas condiciones con el cliente antes de aceptar cualquier devolución de mercadería.</div></div>
+      <div id="rec-cond-1" onclick="toggleCondRec(1)" class="cond-row"><div class="cond-icon" id="rec-cond-icon-1"></div><div style="font-size:13px;line-height:1.4;">Compra realizada <strong>en Pedro Bravin</strong></div></div>
+      <div id="rec-cond-2" onclick="toggleCondRec(2)" class="cond-row"><div class="cond-icon" id="rec-cond-icon-2"></div><div style="font-size:13px;line-height:1.4;">Compra con <strong>menos de 60 días</strong></div></div>
+      <div id="rec-cond-3" onclick="toggleCondRec(3)" class="cond-row" style="margin-bottom:10px;"><div class="cond-icon" id="rec-cond-icon-3"></div><div style="font-size:13px;line-height:1.4;">Mercadería en <strong>condiciones de venta</strong> (limpia, sin golpes, sin roturas)</div></div>
+      <div id="rec-no-cumple" style="display:none;" class="info-box red"><i class="ti ti-x"></i><div><strong>No se puede recepcionar.</strong> Si la mercadería no está en condiciones, el cliente debe venir a retirarla de las instalaciones de Pedro Bravin.</div></div>
+      <button onclick="recPaso2()" id="rec-btn-continuar" disabled style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#ccc;color:#fff;border:none;border-radius:12px;cursor:not-allowed;font-family:inherit;margin-bottom:8px;margin-top:6px;">Condiciones confirmadas — continuar</button>
+      <div style="margin-bottom:8px;"><button onclick="recPaso1b()" style="width:100%;padding:11px;font-size:13px;font-weight:600;background:#EFF6FF;color:#1D4ED8;border:1.5px solid #BFDBFE;border-radius:10px;cursor:pointer;font-family:inherit;"><i class="ti ti-phone"></i> Consultar a oficina primero</button></div>
+      <button onclick="cerrarRec()" class="btn-omitir">Cancelar</button>
+    </div>
+
+    <!-- PASO 1b: llamar -->
+    <div id="rec-paso1b" style="display:none;">
+      <div class="info-box blue" style="margin-bottom:14px;"><i class="ti ti-phone"></i><div>Llamá a la oficina e informales que estás recepcionando mercadería. Si el cliente no es habitual, esperá confirmación.</div></div>
+      <button onclick="recPaso2()" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#065F46;color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit;margin-bottom:8px;">Oficina notificada — continuar</button>
+      <button onclick="cerrarRec()" class="btn-omitir">Cancelar</button>
+    </div>
+
+    <!-- PASO 2: datos -->
+    <div id="rec-paso2" style="display:none;">
+      <div class="info-box green" style="margin-bottom:14px;"><i class="ti ti-lock"></i> Comprobante inmutable — numerado automáticamente REC-</div>
+      <div><label class="lbl-m req">Empresa / procedencia *</label><input id="rec-empresa" class="inp-m" placeholder="Ej: Ferretería López, Juan Pérez..."></div>
+      <div><label class="lbl-m req">Nombre de quien entrega *</label><input id="rec-remitente" class="inp-m" placeholder="Nombre de la persona"></div>
+      <div><label class="lbl-m req">Teléfono de contacto *</label><input id="rec-tel" type="tel" class="inp-m" placeholder="549..."><div style="font-size:11px;color:#888;margin-top:-6px;margin-bottom:10px;">Logística necesita este número para coordinar</div></div>
+      <div><label class="lbl-m">Dirección</label><input id="rec-direccion" class="inp-m" placeholder="Dónde se recibe"></div>
+      <div><label class="lbl-m req">Material recibido *</label><textarea id="rec-material" class="inp-m" style="height:72px;resize:none;" placeholder="Descripción, cantidad, unidad..."></textarea></div>
+      <div style="margin-bottom:10px;"><label class="lbl-m">Estado</label>
+        <div class="tipo-grid">
+          <button class="estado-btn active" onclick="selEstadoRec('Buen estado',this)" style="border-color:#059669;background:#D1FAE5;color:#065F46;">✅ Bueno</button>
+          <button class="estado-btn" onclick="selEstadoRec('Con daños',this)">⚠️ Daños</button>
+          <button class="estado-btn" onclick="selEstadoRec('Incompleto',this)">📦 Incompleto</button>
+        </div>
+      </div>
+      <div><label class="lbl-m">Observaciones</label><input id="rec-obs" class="inp-m" placeholder="Opcional"></div>
+      <!-- Fotos obligatorias -->
+      <div style="margin-bottom:14px;">
+        <label class="lbl-m req">Foto del material * (mínimo 1)</label>
+        <div style="font-size:11px;color:#888;margin-bottom:8px;">El material puede venir en caja. La foto es evidencia del estado al momento del retiro.</div>
+        <div class="foto-grid">
+          <div id="rec-foto-slot-0" onclick="tomarFotoRec(0)" class="foto-slot primary"><div style="text-align:center;color:#DC2626;"><i class="ti ti-camera" style="font-size:22px;display:block;"></i><span style="font-size:10px;font-weight:700;">REQUERIDA</span></div></div>
+          <div id="rec-foto-slot-1" onclick="tomarFotoRec(1)" class="foto-slot"><div style="text-align:center;color:#ccc;"><i class="ti ti-camera" style="font-size:22px;display:block;"></i><span style="font-size:10px;">Foto 2</span></div></div>
+          <div id="rec-foto-slot-2" onclick="tomarFotoRec(2)" class="foto-slot"><div style="text-align:center;color:#ccc;"><i class="ti ti-camera" style="font-size:22px;display:block;"></i><span style="font-size:10px;">Foto 3</span></div></div>
+        </div>
+        <input type="file" id="rec-foto-input" accept="image/*" capture="environment" style="display:none;" onchange="procesarFotoRec(this)">
+      </div>
+      <div id="rec-error" style="color:#DC2626;font-size:12px;margin-bottom:8px;display:none;"></div>
+      <button onclick="guardarRecepcion()" style="width:100%;padding:14px;font-size:15px;font-weight:700;background:#065F46;color:#fff;border:none;border-radius:12px;cursor:pointer;font-family:inherit;margin-bottom:8px;"><i class="ti ti-clipboard-check"></i> Registrar recepción</button>
+      <button onclick="cerrarRec()" class="btn-omitir">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getDatabase, ref, get, update, push, set } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig={apiKey:"AIzaSyA9KkDU1wFRvfH7sIvXe0XWlT2zMdr2PP4",authDomain:"pedro-bravin-tracking.firebaseapp.com",databaseURL:"https://pedro-bravin-tracking-default-rtdb.firebaseio.com",projectId:"pedro-bravin-tracking",storageBucket:"pedro-bravin-tracking.firebasestorage.app",messagingSenderId:"220258990649",appId:"1:220258990649:web:92db48ae42e7e1743e6be8"};
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getDatabase(app);
+
+const VOL={chico:15,mediano:30,grande:45};
+const TEL_ADMIN='5493401525118';
+let paradas=[],viajeId=null,gpsLink='',hrInfo={},revertirIdx=null;
+let tipoCobroSeleccionado='Efectivo',estadoRecSeleccionado='Buen estado';
+let recCondiciones={1:false,2:false,3:false},recFotoSlot=0,recFotosBase64=[null,null,null];
+let fotoSlotActual=0,fotosBase64=[null,null,null];
+
+// ── AUTH ──────────────────────────────────────────────
+window.cerrarSesion=()=>signOut(auth).then(()=>window.location.href='index.html');
+
+onAuthStateChanged(auth,async user=>{
+  if(!user){window.location.href='index.html';return;}
+  const snapU=await get(ref(db,'usuarios/'+user.uid));
+  if(snapU.exists()&&snapU.val().rol==='oficina'){window.location.href='oficina.html';return;}
+  if(!snapU.exists()){
+    const snapC=await get(ref(db,'choferes/'+user.uid));
+    if(snapC.exists())await set(ref(db,'usuarios/'+user.uid),{rol:'chofer',nombre:snapC.val().nombre,email:user.email});
+    else{window.location.href='index.html';return;}
+  }
+  await cargarViaje(user.uid);
+});
+
+// ── VIAJE ─────────────────────────────────────────────
+async function cargarViaje(uid){
+  try{
+    const asig=await get(ref(db,'asignaciones/'+uid));
+    if(!asig.exists()){showSinViaje();return;}
+    viajeId=asig.val().viajeId;
+    const snap=await get(ref(db,'viajes/'+viajeId));
+    if(!snap.exists()){showSinViaje();return;}
+    const hr=snap.val();
+    hrInfo=hr;
+    paradas=hr.paradas||[];
+    gpsLink=hr.gpsLink||'';
+    document.getElementById('loading-screen').style.display='none';
+    if(hr.estado==='completado'){mostrarCerrado();}
+    else{render();renderCobros();renderRecepciones();}
+  }catch(e){showSinViaje();}
+}
+
+function showSinViaje(){
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('sin-viaje').style.display='block';
+}
+
+function mostrarCerrado(){
+  document.getElementById('done-screen').style.display='block';
+  document.getElementById('cierre-form').style.display='none';
+  document.getElementById('viaje-cerrado').style.display='block';
+  renderHistorial();
+}
+
+// ── ETAs ──────────────────────────────────────────────
+function parseMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+function addMin(t,m){let x=parseMin(t)+Math.round(m);return String(Math.floor(x/60)%24).padStart(2,'0')+':'+String(x%60).padStart(2,'0');}
+function calcETAs(){
+  if(!hrInfo.horaSalida)return[];
+  let c=addMin(hrInfo.horaSalida,hrInfo.tiempoZona||50);
+  return paradas.map((p,i)=>{const eta=c;c=addMin(c,(VOL[p.vol]||30)+(i<paradas.length-1?12:0));return eta;});
+}
+
+// ── RENDER PARADA ─────────────────────────────────────
+function getSig(){return paradas.findIndex(p=>p.estado==='pendiente');}
+
+function render(){
+  const etas=calcETAs();
+  const sig=getSig();
+  const ent=paradas.filter(p=>p.estado==='entregado').length;
+  const pct=Math.round(ent/paradas.length*100);
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('top-prog').textContent=ent+'/'+paradas.length;
+
+  if(sig===-1){
+    document.getElementById('parada-screen').style.display='none';
+    document.getElementById('done-screen').style.display='block';
+    get(ref(db,'viajes/'+viajeId)).then(s=>{
+      if(s.exists()&&s.val().estado==='completado'){
+        document.getElementById('cierre-form').style.display='none';
+        document.getElementById('viaje-cerrado').style.display='block';
+        renderHistorial();
+      }
+    });
+    return;
+  }
+
+  const p=paradas[sig];
+  document.getElementById('parada-screen').style.display='block';
+  document.getElementById('done-screen').style.display='none';
+  document.getElementById('parada-counter').textContent='PARADA '+(sig+1)+' DE '+paradas.length;
+  document.getElementById('p-loc').textContent=p.localidad;
+  document.getElementById('p-cliente').textContent=p.cliente;
+  document.getElementById('p-material').textContent=p.material;
+  document.getElementById('p-eta').textContent=(p.eta||etas[sig]||'—')+' hs';
+  if(p.tel){document.getElementById('p-tel-row').style.display='flex';document.getElementById('p-tel').textContent=p.tel;}
+  else document.getElementById('p-tel-row').style.display='none';
+
+  // Anteriores
+  const ant=document.getElementById('anteriores');
+  const proc=paradas.filter(p=>p.estado!=='pendiente');
+  const etxto=e=>({entregado:'Entregado',salteado:'Salteado',no_estaba:'No estaba',rechazo_total:'Rechazo total',rechazo_parcial:'Rechazo parcial'})[e]||e;
+  if(proc.length>0){
+    ant.innerHTML='<div class="ant-title">Tocá para revertir</div>'+
+      paradas.map((p,i)=>p.estado!=='pendiente'?
+        `<div class="ant-item" onclick="abrirRevertir(${i})">
+          <div class="ant-dot ${p.estado==='entregado'?'done':'bad'}">${p.estado==='entregado'?'✓':'!'}</div>
+          <div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;">${p.cliente}</div><div style="font-size:11px;color:#aaa;">${etxto(p.estado)}</div></div>
+          <span class="ant-rev"><i class="ti ti-refresh"></i> Revertir</span>
+        </div>`:''
+      ).join('');
+  } else ant.innerHTML='';
+}
+
+// ── ACCIONES PARADA ───────────────────────────────────
+async function guardarEstado(idx,estado){
+  paradas[idx].estado=estado;
+  await update(ref(db,'viajes/'+viajeId+'/paradas/'+idx),{estado});
+}
+
+window.accion=async function(tipo){
+  cerrarModalNo();
+  const sig=getSig();if(sig===-1)return;
+  await guardarEstado(sig,tipo);
+  const etas=calcETAs();
+  const prox=getSig();
+  if(tipo==='entregado'&&prox!==-1){
+    const pp=paradas[prox];
+    if(pp.tel&&(hrInfo.empresa||'PB')==='PB'){
+      const rest=paradas.slice(prox).filter(p=>p.estado==='pendiente').length-1;
+      const gpsStr=gpsLink?`\n\n📍 Seguí el camión en vivo:\n${gpsLink}`:'';
+      const txt=`🚛 *Pedro Bravin S.A* — Tu pedido está en camino.\n\n${rest>0?`Quedan ${rest} entrega${rest>1?'s':''} antes que vos.`:`Somos tu próxima entrega.`}\n⏱ Hora estimada: *${pp.eta||etas[prox]} hs*${gpsStr}\n\nAnte consultas comunicarte con nosotros.`;
+      document.getElementById('wsp-header').textContent='Avisá a '+pp.cliente;
+      document.getElementById('wsp-body').textContent=txt;
+      document.getElementById('wsp-link').href='https://wa.me/'+pp.tel+'?text='+encodeURIComponent(txt);
+      document.getElementById('wsp-screen').style.display='block';
+      document.getElementById('parada-screen').style.display='none';
+      return;
+    }
+  }
+  render();
+};
+
+window.cerrarWSP=function(){document.getElementById('wsp-screen').style.display='none';render();};
+document.getElementById('wsp-link').addEventListener('click',()=>{setTimeout(()=>{document.getElementById('wsp-screen').style.display='none';render();},800);});
+
+window.abrirModalNoEntrega=()=>document.getElementById('modal-no').classList.add('open');
+window.cerrarModalNo=()=>document.getElementById('modal-no').classList.remove('open');
+
+window.abrirRevertir=function(idx){revertirIdx=idx;document.getElementById('rev-titulo').textContent='¿Revertir a '+paradas[idx].cliente+'?';document.getElementById('modal-rev').classList.add('open');};
+window.cerrarModalRev=()=>document.getElementById('modal-rev').classList.remove('open');
+window.confirmarRevertir=async function(){if(revertirIdx===null)return;await guardarEstado(revertirIdx,'pendiente');cerrarModalRev();render();};
+
+// ── COBROS ────────────────────────────────────────────
+async function generarNumero(tipo){
+  const hoy=new Date();
+  const fecha=`${hoy.getFullYear()}${String(hoy.getMonth()+1).padStart(2,'0')}${String(hoy.getDate()).padStart(2,'0')}`;
+  const snap=await get(ref(db,`contadores/${tipo}/${fecha}`));
+  const seq=(snap.exists()?snap.val():0)+1;
+  await update(ref(db,`contadores/${tipo}`),{[fecha]:seq});
+  return `${tipo}-${fecha}-${String(seq).padStart(3,'0')}`;
+}
+
+window.abrirCobro=function(){
+  ['cobro-cliente','cobro-tel','cobro-monto','cobro-obs'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cobro-error').style.display='none';
+  document.getElementById('cobro-monto-wrap').style.display='block';
+  tipoCobroSeleccionado='Efectivo';
+  document.querySelectorAll('.tipo-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  document.getElementById('modal-cobro').classList.add('open');
+};
+window.cerrarCobro=()=>document.getElementById('modal-cobro').classList.remove('open');
+window.selTipo=function(tipo,btn){
+  tipoCobroSeleccionado=tipo;
+  document.querySelectorAll('.tipo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('cobro-monto-wrap').style.display=tipo==='Sobre cerrado'?'none':'block';
+};
+
+window.guardarCobro=async function(){
+  const cliente=document.getElementById('cobro-cliente').value.trim();
+  const tel=document.getElementById('cobro-tel').value.trim().replace(/\D/g,'');
+  const monto=tipoCobroSeleccionado==='Sobre cerrado'?0:parseFloat(document.getElementById('cobro-monto').value)||0;
+  const obs=document.getElementById('cobro-obs').value.trim();
+  const err=document.getElementById('cobro-error');
+  if(!cliente){err.textContent='Ingresá el nombre del cliente';err.style.display='block';return;}
+  if(tipoCobroSeleccionado!=='Sobre cerrado'&&monto<=0){err.textContent='Ingresá el monto';err.style.display='block';return;}
+  const numero=await generarNumero('COB');
+  const cobro={numero,cliente,tel,tipo:tipoCobroSeleccionado,monto,obs:obs||'',hora:new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),ts:Date.now(),origen:'chofer',inmutable:true};
+  try{
+    await push(ref(db,'viajes/'+viajeId+'/cobros'),cobro);
+    cerrarCobro();renderCobros();
+    if(tel&&(hrInfo.empresa||'PB')==='PB'){window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(generarComprobanteCobro(cobro)),'_blank');}
+  }catch(e){err.textContent='Error al guardar';err.style.display='block';}
+};
+
+function generarComprobanteCobro(c){
+  return `🏦 *Pedro Bravin S.A — Comprobante de cobro ${c.numero}*\n\n`+
+    `Fecha: ${new Date().toLocaleDateString('es-AR')} · ${c.hora} hs\n`+
+    `HR: ${hrInfo.hrNumero||'—'} | ${hrInfo.zona||'—'}\n`+
+    `Chofer: ${hrInfo.choferNombre||'—'}\n\n`+
+    `*Recibimos de:* ${c.cliente}\n`+
+    `*Forma:* ${c.tipo}${c.monto>0?'\n*Monto:* $'+c.monto.toLocaleString('es-AR',{minimumFractionDigits:2}):''}\n`+
+    `${c.obs?'*Obs:* '+c.obs+'\n':''}\n`+
+    `⚠️ Comprobante provisorio sujeto a confirmación.\n`+
+    `Ante consultas realizarlas a su vendedor con este comprobante.`;
+}
+
+async function renderCobros(){
+  const snap=await get(ref(db,'viajes/'+viajeId+'/cobros'));
+  const cont=document.getElementById('cobros-lista');
+  const resumen=document.getElementById('cobros-resumen');
+  if(!snap.exists()){resumen.style.display='none';return;}
+  const cobros=Object.values(snap.val()).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const originales=cobros.filter(c=>c.origen!=='correccion');
+  const correcciones=cobros.filter(c=>c.origen==='correccion');
+  const esPB=(hrInfo.empresa||'PB')==='PB';
+  resumen.style.display='block';cont.innerHTML='';
+  let total=0;
+  originales.forEach(c=>{
+    total+=c.monto||0;
+    const icon=c.tipo==='Efectivo'?'💵':c.tipo==='Cheque'?'📄':'✉️';
+    const wspBtn=esPB&&c.tel?`<a href="https://wa.me/${c.tel}?text=${encodeURIComponent(generarComprobanteCobro(c))}" target="_blank" style="font-size:11px;color:#25D366;background:#F0FDF4;border:1px solid #A7F3D0;border-radius:6px;padding:3px 8px;text-decoration:none;display:inline-flex;align-items:center;gap:3px;flex-shrink:0;"><i class="ti ti-brand-whatsapp"></i></a>`:'';
+    const div=document.createElement('div');div.className='reg-item cobro';
+    div.innerHTML=`<div style="display:flex;align-items:center;gap:8px;"><span style="font-size:16px;">${icon}</span><div style="flex:1;min-width:0;font-size:12px;"><strong>${c.cliente}</strong> <span class="badge-num badge-cobro">${c.numero||'—'}</span><br>${c.tipo}${c.monto>0?' · $'+c.monto.toLocaleString('es-AR'):''}${c.obs?' · '+c.obs:''} · ${c.hora}</div>${wspBtn}</div>`;
+    cont.appendChild(div);
+    correcciones.filter(cr=>cr.refCliente===c.cliente).forEach(cr=>{
+      const corr=document.createElement('div');corr.style.cssText='margin:4px 0 4px 28px;padding:5px 10px;background:#FEF3C7;border-radius:6px;font-size:11px;color:#92400E;';
+      corr.innerHTML=`⚠️ ${cr.obs} · ${cr.hora}`;cont.appendChild(corr);
+    });
+  });
+  if(originales.length>0){const t=document.createElement('div');t.style.cssText='text-align:right;font-size:13px;font-weight:700;padding:6px 0;';t.textContent='Total: $'+total.toLocaleString('es-AR',{minimumFractionDigits:2});cont.appendChild(t);}
+}
+
+// ── RECEPCIONES (unifica devolución + recepción) ──────
+window.abrirRecepcion=function(){
+  document.getElementById('rec-paso1').style.display='block';
+  document.getElementById('rec-paso1b').style.display='none';
+  document.getElementById('rec-paso2').style.display='none';
+  document.getElementById('rec-no-cumple').style.display='none';
+  document.getElementById('rec-error').style.display='none';
+  recCondiciones={1:false,2:false,3:false};
+  [1,2,3].forEach(i=>{const ic=document.getElementById('rec-cond-icon-'+i);ic.textContent='';ic.style.background='#f5f5f5';ic.style.borderColor='#d1d5db';document.getElementById('rec-cond-'+i).style.background='#fff';document.getElementById('rec-cond-'+i).style.borderColor='#e5e5e5';});
+  const btn=document.getElementById('rec-btn-continuar');btn.disabled=true;btn.style.background='#ccc';btn.style.cursor='not-allowed';
+  document.getElementById('modal-rec').classList.add('open');
+};
+window.cerrarRec=()=>document.getElementById('modal-rec').classList.remove('open');
+
+window.toggleCondRec=function(n){
+  recCondiciones[n]=!recCondiciones[n];
+  const ic=document.getElementById('rec-cond-icon-'+n);
+  const row=document.getElementById('rec-cond-'+n);
+  if(recCondiciones[n]){ic.textContent='✓';ic.style.background='#D1FAE5';ic.style.borderColor='#059669';ic.style.color='#065F46';row.style.background='#F0FDF4';row.style.borderColor='#A7F3D0';}
+  else{ic.textContent='';ic.style.background='#f5f5f5';ic.style.borderColor='#d1d5db';ic.style.color='';row.style.background='#fff';row.style.borderColor='#e5e5e5';}
+  const todas=recCondiciones[1]&&recCondiciones[2]&&recCondiciones[3];
+  const btn=document.getElementById('rec-btn-continuar');
+  btn.disabled=!todas;btn.style.background=todas?'#065F46':'#ccc';btn.style.cursor=todas?'pointer':'not-allowed';
+};
+
+window.recPaso1b=function(){document.getElementById('rec-paso1').style.display='none';document.getElementById('rec-paso1b').style.display='block';};
+
+window.recPaso2=function(){
+  document.getElementById('rec-paso1').style.display='none';
+  document.getElementById('rec-paso1b').style.display='none';
+  document.getElementById('rec-paso2').style.display='block';
+  ['rec-empresa','rec-remitente','rec-tel','rec-direccion','rec-material','rec-obs'].forEach(id=>document.getElementById(id).value='');
+  estadoRecSeleccionado='Buen estado';
+  recFotosBase64=[null,null,null];
+  [0,1,2].forEach(i=>{
+    const slot=document.getElementById('rec-foto-slot-'+i);
+    slot.className='foto-slot'+(i===0?' primary':'');
+    slot.innerHTML=`<div style="text-align:center;color:${i===0?'#DC2626':'#ccc'};"><i class="ti ti-camera" style="font-size:22px;display:block;"></i><span style="font-size:10px;font-weight:${i===0?'700':'400'};">${i===0?'REQUERIDA':'Foto '+(i+1)}</span></div>`;
+  });
+  document.querySelectorAll('.estado-btn').forEach((b,i)=>{b.style.background=i===0?'#D1FAE5':'#fafafa';b.style.color=i===0?'#065F46':'#888';b.style.borderColor=i===0?'#059669':'#e5e5e5';});
+};
+
+window.selEstadoRec=function(estado,btn){
+  estadoRecSeleccionado=estado;
+  document.querySelectorAll('.estado-btn').forEach(b=>{b.style.background='#fafafa';b.style.color='#888';b.style.borderColor='#e5e5e5';});
+  btn.style.background=estado==='Buen estado'?'#D1FAE5':estado==='Con daños'?'#FEE2E2':'#FEF3C7';
+  btn.style.color=estado==='Buen estado'?'#065F46':estado==='Con daños'?'#991B1B':'#92400E';
+  btn.style.borderColor=estado==='Buen estado'?'#059669':estado==='Con daños'?'#F87171':'#FDE68A';
+};
+
+window.tomarFotoRec=function(slot){recFotoSlot=slot;document.getElementById('rec-foto-input').value='';document.getElementById('rec-foto-input').click();};
+window.procesarFotoRec=function(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');const MAX=800;let w=img.width,h=img.height;
+      if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}if(h>MAX){w=Math.round(w*MAX/h);h=MAX;}
+      canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const b64=canvas.toDataURL('image/jpeg',0.7);
+      recFotosBase64[recFotoSlot]=b64;
+      const slot=document.getElementById('rec-foto-slot-'+recFotoSlot);
+      slot.innerHTML=`<img src="${b64}" style="width:100%;height:100%;object-fit:cover;">`;
+      slot.style.border='2px solid #059669';slot.className='foto-slot ready';
+      if(recFotoSlot<2){const next=document.getElementById('rec-foto-slot-'+(recFotoSlot+1));next.className='foto-slot ready';next.querySelector('div').style.color='#065F46';}
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+window.guardarRecepcion=async function(){
+  const empresa=document.getElementById('rec-empresa').value.trim();
+  const remitente=document.getElementById('rec-remitente').value.trim();
+  const tel=document.getElementById('rec-tel').value.trim().replace(/\D/g,'');
+  const direccion=document.getElementById('rec-direccion').value.trim();
+  const material=document.getElementById('rec-material').value.trim();
+  const obs=document.getElementById('rec-obs').value.trim();
+  const err=document.getElementById('rec-error');
+  if(!empresa){err.textContent='Indicá la empresa o procedencia';err.style.display='block';return;}
+  if(!remitente){err.textContent='Ingresá el nombre de quien entrega';err.style.display='block';return;}
+  if(!tel){err.textContent='El teléfono es obligatorio para que logística pueda contactar';err.style.display='block';return;}
+  if(!material){err.textContent='Describí el material recibido';err.style.display='block';return;}
+  const fotos=recFotosBase64.filter(f=>f!==null);
+  if(fotos.length===0){err.textContent='Se requiere al menos una foto del material';err.style.display='block';return;}
+  const numero=await generarNumero('REC');
+  const rec={numero,empresa,remitente,tel,direccion,material,estado:estadoRecSeleccionado,obs:obs||'',fotos,cantFotos:fotos.length,hora:new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),fecha:new Date().toLocaleDateString('es-AR'),ts:Date.now(),origen:'chofer',inmutable:true,chofer:hrInfo.choferNombre||'',hrNumero:hrInfo.hrNumero||'',zona:hrInfo.zona||''};
+  try{
+    await push(ref(db,'viajes/'+viajeId+'/recepciones'),rec);
+    cerrarRec();renderRecepciones();
+    if(tel&&(hrInfo.empresa||'PB')==='PB'){window.open('https://wa.me/'+tel+'?text='+encodeURIComponent(generarComprobanteRec(rec)),'_blank');}
+  }catch(e){err.textContent='Error al guardar';err.style.display='block';}
+};
+
+function generarComprobanteRec(r){
+  const fotosTxt=r.cantFotos>0?`\n📸 ${r.cantFotos} foto${r.cantFotos>1?'s':''} registrada${r.cantFotos>1?'s':''} en el sistema`:'';
+  return `📥 *Pedro Bravin S.A — Comprobante de recepción ${r.numero}*\n\n`+
+    `Fecha: ${r.fecha} · ${r.hora} hs\n`+
+    `HR: ${r.hrNumero||'—'} | ${r.zona||'—'}\n`+
+    `Chofer: ${r.chofer||'—'}\n\n`+
+    `*Empresa/Procedencia:* ${r.empresa}\n`+
+    `*Entregado por:* ${r.remitente}\n`+
+    `*Material:* ${r.material}\n`+
+    `*Estado:* ${r.estado}\n`+
+    `${r.obs?'*Obs:* '+r.obs+'\n':''}`+
+    `${fotosTxt}\n\n`+
+    `─────────────────────\n`+
+    `⚠️ *Comprobante PROVISORIO* sujeto a verificación en depósito.\n\n`+
+    `La recepción definitiva procede únicamente si:\n`+
+    `• Compra realizada en Pedro Bravin\n`+
+    `• Menos de 60 días desde la compra\n`+
+    `• Mercadería en condiciones comerciales\n\n`+
+    `Comuníquese con su *vendedor designado* presentando este comprobante.`;
+}
+
+async function renderRecepciones(){
+  const snap=await get(ref(db,'viajes/'+viajeId+'/recepciones'));
+  const cont=document.getElementById('recs-lista');
+  const resumen=document.getElementById('recs-resumen');
+  if(!snap.exists()){resumen.style.display='none';return;}
+  const recs=Object.values(snap.val()).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const esPB=(hrInfo.empresa||'PB')==='PB';
+  resumen.style.display='block';cont.innerHTML='';
+  recs.forEach(r=>{
+    const wspBtn=esPB&&r.tel?`<a href="https://wa.me/${r.tel}?text=${encodeURIComponent(generarComprobanteRec(r))}" target="_blank" style="font-size:11px;color:#25D366;background:#F0FDF4;border:1px solid #A7F3D0;border-radius:6px;padding:4px 8px;text-decoration:none;display:inline-flex;align-items:center;gap:3px;margin-top:5px;"><i class="ti ti-brand-whatsapp"></i> Reenviar</a>`:'';
+    const div=document.createElement('div');div.className='reg-item recepcion';
+    div.innerHTML=`<div style="display:flex;align-items:flex-start;gap:8px;"><span style="font-size:16px;">📥</span><div style="flex:1;min-width:0;font-size:12px;"><strong>${r.empresa}</strong> <span class="badge-num badge-rec">${r.numero}</span>${r.cantFotos>0?` <span style="font-size:10px;background:#D1FAE5;color:#065F46;padding:1px 5px;border-radius:4px;">📸 ${r.cantFotos}</span>`:''}<br>${r.remitente} · ${r.estado} · ${r.hora}<br>${r.material}${wspBtn?'<br>'+wspBtn:''}</div></div>`;
+    cont.appendChild(div);
+  });
+}
+
+// ── CIERRE ────────────────────────────────────────────
+window.cerrarViaje=async function(){
+  const obs=document.getElementById('obs-viaje').value.trim();
+  const btn=document.getElementById('btn-cerrar-viaje');
+  btn.disabled=true;btn.innerHTML='<i class="ti ti-loader"></i> Cerrando...';
+  try{
+    await update(ref(db,'viajes/'+viajeId),{estado:'completado',horaCierre:new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),observacionesCierre:obs||''});
+    document.getElementById('cierre-form').style.display='none';
+    document.getElementById('viaje-cerrado').style.display='block';
+    renderHistorial();
+  }catch(e){btn.disabled=false;btn.innerHTML='<i class="ti ti-lock-check"></i> Cerrar viaje';}
+};
+
+async function renderHistorial(){
+  document.getElementById('historial-section').style.display='block';
+  const [snapC,snapR]=await Promise.all([
+    get(ref(db,'viajes/'+viajeId+'/cobros')),
+    get(ref(db,'viajes/'+viajeId+'/recepciones'))
+  ]);
+  const hc=document.getElementById('historial-cobros');
+  const hr2=document.getElementById('historial-recs');
+  hc.innerHTML='';hr2.innerHTML='';
+  if(snapC.exists()){
+    const cobros=Object.values(snapC.val()).filter(c=>c.origen!=='correccion').sort((a,b)=>(a.ts||0)-(b.ts||0));
+    const total=cobros.reduce((s,c)=>s+(c.monto||0),0);
+    hc.innerHTML=`<div class="reg-title" style="margin-top:12px;">Cobros (${cobros.length}) — Total: $${total.toLocaleString('es-AR',{minimumFractionDigits:2})}</div>`;
+    cobros.forEach(c=>{
+      const d=document.createElement('div');d.className='hist-item';
+      d.innerHTML=`<div class="hist-title">${c.cliente} <span class="badge-num badge-cobro">${c.numero||''}</span></div><div class="hist-sub">${c.tipo}${c.monto>0?' · $'+c.monto.toLocaleString('es-AR'):''} · ${c.hora}</div>`;
+      hc.appendChild(d);
+    });
+  }
+  if(snapR.exists()){
+    const recs=Object.values(snapR.val()).sort((a,b)=>(a.ts||0)-(b.ts||0));
+    hr2.innerHTML=`<div class="reg-title" style="margin-top:8px;">Recepciones (${recs.length})</div>`;
+    recs.forEach(r=>{
+      const d=document.createElement('div');d.className='hist-item';
+      d.innerHTML=`<div class="hist-title">${r.empresa} <span class="badge-num badge-rec">${r.numero}</span></div><div class="hist-sub">${r.material} · ${r.estado} · ${r.hora}</div>`;
+      hr2.appendChild(d);
+    });
+  }
+}
+</script>
+</body>
+</html>

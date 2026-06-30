@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pedro Bravin — Oficina</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh;}
@@ -50,6 +51,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .btn-green{background:#16a34a;color:#fff;border-color:#16a34a;}
 .btn-red{background:#DC2626;color:#fff;border-color:#DC2626;}
 .btn-wsp{background:#25D366;color:#fff;border-color:#25D366;}
+#btn-float-save{position:fixed;bottom:72px;right:16px;z-index:1000;border:none;border-radius:50px;padding:11px 20px;font-size:13px;font-weight:700;cursor:pointer;display:none;align-items:center;gap:7px;box-shadow:0 4px 18px rgba(0,0,0,.22);transition:background .2s,transform .1s;border:2px solid transparent;}
+#btn-float-save:active{transform:scale(.96);}
+#btn-float-save.pendiente{background:#F97316;color:#fff;border-color:#EA580C;animation:pulseOrange 2s infinite;}
+#btn-float-save.guardado{background:#10B981;color:#fff;border-color:#059669;}
+@keyframes pulseOrange{0%,100%{box-shadow:0 4px 18px rgba(249,115,22,.35);}50%{box-shadow:0 4px 24px rgba(249,115,22,.65);}}
 .btn-sm{padding:4px 10px;font-size:11px;}
 .btn-icon{padding:4px 7px;font-size:12px;}
 .sel,.inp{font-size:12px;border:1px solid #e5e5e5;border-radius:7px;padding:5px 8px;background:#fff;font-family:inherit;color:#1a1a1a;}
@@ -147,23 +153,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 <div class="container">
   <div class="tabs">
-    <button class="tab active" onclick="showScreen('viajes')" id="tab-viajes"><i class="ti ti-truck-delivery"></i> Viajes PB</button>
-    <button class="tab" onclick="showScreen('e51')" id="tab-e51"><i class="ti ti-building-warehouse"></i> Viajes E51</button>
+    <button class="tab active" onclick="showScreen('viajes')" id="tab-viajes"><i class="ti ti-truck-delivery"></i> Viajes</button>
     <button class="tab" onclick="showScreen('nuevo')" id="tab-nuevo"><i class="ti ti-plus"></i> Nuevo</button>
-    <button class="tab" onclick="showScreen('monitor')" id="tab-monitor" disabled><i class="ti ti-eye"></i> Monitor</button>
+    <button class="tab" onclick="showScreen('monitor')" id="tab-monitor"><i class="ti ti-eye"></i> Monitor</button>
+    <button class="tab" onclick="showScreen('historial')" id="tab-historial"><i class="ti ti-history"></i> Historial</button>
     <button class="tab" onclick="showScreen('equipo')" id="tab-equipo"><i class="ti ti-users"></i> Equipo</button>
   </div>
 
   <!-- VIAJES PB -->
   <div id="screen-viajes" class="screen active">
-    <div style="font-size:11px;color:#888;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:#DBEAFE;color:#1D4ED8;padding:2px 8px;border-radius:5px;font-weight:700;font-size:10px;">PB</span> Empresa normal — contacto con cliente externo</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+      <span style="font-size:11px;color:#888;font-weight:600;">Viajes activos de hoy</span>
+      <span id="viajes-live-dot" style="width:8px;height:8px;border-radius:50%;background:#25D366;display:inline-block;margin-left:4px;" title="Actualización en tiempo real"></span>
+    </div>
     <div id="viajes-lista"><div style="text-align:center;padding:2rem;color:#aaa;"><div class="spinner spinner-lg"></div><div style="font-size:13px;margin-top:8px;">Cargando...</div></div></div>
   </div>
 
-  <!-- VIAJES E51 -->
-  <div id="screen-e51" class="screen">
-    <div style="font-size:11px;color:#888;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><span style="background:#F5F3FF;color:#7C3AED;padding:2px 8px;border-radius:5px;font-weight:700;font-size:10px;">E51</span> Empresa interna — sin contacto con cliente externo</div>
-    <div id="e51-lista"><div style="text-align:center;padding:2rem;color:#aaa;"><div class="spinner spinner-lg"></div><div style="font-size:13px;margin-top:8px;">Cargando...</div></div></div>
+  <!-- HISTORIAL -->
+  <div id="screen-historial" class="screen">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;">
+      <div style="font-size:13px;font-weight:600;">Historial de viajes</div>
+      <input id="hist-buscar" class="sel" placeholder="Buscar zona o chofer..." style="font-size:12px;width:160px;" oninput="filtrarHistorial()">
+    </div>
+    <div id="historial-lista"><div style="text-align:center;padding:2rem;color:#aaa;font-size:13px;">Cargando historial...</div></div>
   </div>
 
   <!-- NUEVO VIAJE -->
@@ -171,16 +183,47 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
     <!-- GPS Red Security -->
     <div class="gps-block">
-      <div style="display:flex;align-items:center;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <div class="gps-dot" id="gps-dot"></div>
-        <div style="flex:1;font-size:13px;font-weight:500;">Link GPS Red Security</div>
-        <button class="btn btn-sm" onclick="abrirRedSecurity()"><i class="ti ti-external-link"></i> Generar</button>
-        <button class="btn btn-sm" onclick="toggleGPSEdit()"><i class="ti ti-pencil"></i></button>
+        <div style="flex:1;font-size:13px;font-weight:600;">Link GPS Red Security</div>
+        <button class="btn btn-sm" onclick="toggleGPSGuia()" id="btn-gps-guia" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;"><i class="ti ti-help"></i> ¿Cómo generar?</button>
       </div>
       <div class="gps-url" id="gps-preview">Sin link configurado</div>
-      <div id="gps-edit-area" style="display:none;margin-top:8px;">
-        <input id="gps-link-input" class="inp-full" placeholder="Pegá el link Simple de Red Security..." style="margin-bottom:6px;font-size:12px;">
-        <button class="btn btn-dark btn-sm" onclick="guardarGPS()">Guardar link</button>
+
+      <!-- Guía paso a paso -->
+      <div id="gps-guia" style="display:none;margin-top:10px;background:#F8FAFF;border-radius:10px;padding:12px;border:1px solid #BFDBFE;">
+        <div style="font-size:12px;font-weight:700;color:#1D4ED8;margin-bottom:10px;"><i class="ti ti-route"></i> Cómo generar el link GPS</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:#1D4ED8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+            <div style="font-size:12px;color:#1a1a1a;line-height:1.5;">Abrí Red Security y buscá el camión que va a salir</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:#1D4ED8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+            <div style="font-size:12px;color:#1a1a1a;line-height:1.5;">Hacé clic en los <strong>tres puntos ···</strong> al lado del camión</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:#1D4ED8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+            <div style="font-size:12px;color:#1a1a1a;line-height:1.5;">Elegí <strong>Invitación Temporal</strong></div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:#1D4ED8;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div>
+            <div style="font-size:12px;color:#1a1a1a;line-height:1.5;">Seleccioná el tipo <strong>"Simple"</strong>, elegí la <strong>fecha y hora desde/hasta</strong> que será visible para el cliente (ej: hoy 07:00 hasta 20:00) y copiá el link</div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:#25D366;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">5</div>
+            <div style="font-size:12px;color:#1a1a1a;line-height:1.5;">Pegá el link acá abajo y guardalo</div>
+          </div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <a href="https://gps.redsecurity.com.ar/StreetZ/" target="_blank" class="btn btn-dark btn-sm" style="text-decoration:none;"><i class="ti ti-external-link"></i> Abrir Red Security</a>
+        </div>
+      </div>
+
+      <!-- Campo para pegar el link -->
+      <div style="margin-top:8px;display:flex;gap:6px;">
+        <input id="gps-link-input" class="inp-full" placeholder="Pegá acá el link Simple de Red Security..." style="font-size:12px;flex:1;">
+        <button class="btn btn-dark btn-sm" onclick="guardarGPS()" style="white-space:nowrap;">Guardar</button>
       </div>
     </div>
 
@@ -188,22 +231,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
     <div class="card" style="margin-bottom:10px;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
         <div>
-          <div class="lbl">Chofer</div>
-          <select id="sel-chofer" class="sel" style="width:100%;"></select>
+          <div class="lbl">Chofer <span style="color:#DC2626;">*</span></div>
+          <select id="sel-chofer" class="sel" style="width:100%;" onchange="marcarEditado()"></select>
         </div>
         <div>
-          <div class="lbl">Acompañante</div>
-          <select id="sel-acompanante" class="sel" style="width:100%;"></select>
+          <div class="lbl">Acompañante <span style="color:#DC2626;">*</span></div>
+          <select id="sel-acompanante" class="sel" style="width:100%;" onchange="marcarEditado()"></select>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
         <div>
-          <div class="lbl">Camión</div>
-          <select id="sel-camion" class="sel" style="width:100%;"></select>
+          <div class="lbl">Camión <span style="color:#DC2626;">*</span></div>
+          <select id="sel-camion" class="sel" style="width:100%;" onchange="marcarEditado()"></select>
         </div>
         <div>
           <div class="lbl">Zona <span style="color:#DC2626;">*</span></div>
-          <input type="text" id="inp-zona" class="inp" placeholder="Ej: Zona Rafaela" style="width:100%;">
+          <select id="sel-zona" class="sel" style="width:100%;" onchange="onZonaChange(this)">
+            <option value="">— Seleccioná zona —</option>
+            <option value="REPARTO LOCAL">2. REPARTO LOCAL</option>
+            <option value="ZONA SAN FRANCISCO">1. ZONA SAN FRANCISCO</option>
+            <option value="ZONA RAFAELA">3. ZONA RAFAELA</option>
+            <option value="ZONA LAS ROSAS">4. ZONA LAS ROSAS</option>
+            <option value="ZONA PIAMONTE">6. ZONA PIAMONTE</option>
+            <option value="ZONA SAN VICENTE">7. ZONA SAN VICENTE</option>
+            <option value="ZONA SAN JORGE (miércoles)">8. ZONA SAN JORGE (miércoles)</option>
+            <option value="ZONA SAN JORGE (viernes)">16. ZONA SAN JORGE (viernes)</option>
+            <option value="OTRA">10. OTRA ZONA</option>
+          </select>
+          <input type="text" id="inp-zona" class="inp" placeholder="Escribí la zona..." style="width:100%;margin-top:5px;display:none;">
+          <div id="zona-badge" style="display:none;font-size:11px;color:#059669;margin-top:4px;"><i class="ti ti-check"></i> Zona detectada del PDF — modificable</div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
@@ -232,13 +288,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div class="spinner spinner-lg"></div>
       <div id="loading-msg" style="font-size:13px;color:#888;">Analizando...</div>
     </div>
-    <div style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-      <button class="btn btn-sm" onclick="usarDemoHR()" style="color:#888;"><i class="ti ti-flask"></i> Demo PB</button>
-      <button class="btn btn-sm" onclick="usarDemoE51()" style="color:#7C3AED;border-color:#DDD6FE;background:#F5F3FF;"><i class="ti ti-flask"></i> Demo E51</button>
-    </div>
-
-    <!-- Empresa detectada -->
-    <div id="empresa-detectada" style="display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;"></div>
 
     <!-- Logística -->
     <div id="logistica-area" style="display:none;margin-top:14px;">
@@ -251,6 +300,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <div id="paradas-logistica"></div>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-green" onclick="publicarViaje()"><i class="ti ti-cloud-upload"></i> Publicar viaje</button>
+        <button class="btn" onclick="guardarBorrador()"><i class="ti ti-device-floppy"></i> Guardar borrador</button>
         <button class="btn" onclick="recalcular()"><i class="ti ti-refresh"></i> Recalcular</button>
       </div>
 
@@ -272,7 +322,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <!-- MONITOR -->
   <div id="screen-monitor" class="screen">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-      <select id="sel-monitor" class="sel" style="flex:1;font-size:13px;padding:7px;" onchange="cargarMonitor()"></select>
+      <select id="sel-monitor" class="sel" style="flex:1;font-size:13px;padding:7px;" onchange="cambiarMonitorViaje(this.value)"></select>
       <button class="btn btn-sm" onclick="cargarMonitor()"><i class="ti ti-refresh"></i></button>
     </div>
     <div id="monitor-resumen" style="display:none;margin-bottom:10px;">
@@ -292,27 +342,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
       <button class="equipo-tab active" onclick="showEquipo('choferes')" id="etab-choferes"><i class="ti ti-steering-wheel"></i> Choferes</button>
       <button class="equipo-tab" onclick="showEquipo('acompanantes')" id="etab-acompanantes"><i class="ti ti-user-plus"></i> Acompañantes</button>
       <button class="equipo-tab" onclick="showEquipo('camiones')" id="etab-camiones"><i class="ti ti-truck"></i> Camiones</button>
+      <button class="equipo-tab" onclick="showEquipo('oficina')" id="etab-oficina"><i class="ti ti-building"></i> Oficina</button>
     </div>
 
     <div id="equipo-choferes" class="equipo-screen active">
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-        <button class="btn btn-dark btn-sm" onclick="abrirModal('chofer')"><i class="ti ti-plus"></i> Nuevo chofer</button>
+        <button class="btn btn-dark btn-sm btn-admin-equipo" onclick="abrirModal('chofer')"><i class="ti ti-plus"></i> Nuevo chofer</button>
       </div>
       <div id="lista-choferes"></div>
     </div>
 
     <div id="equipo-acompanantes" class="equipo-screen">
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-        <button class="btn btn-dark btn-sm" onclick="abrirModal('acompanante')"><i class="ti ti-plus"></i> Nuevo acompañante</button>
+        <button class="btn btn-dark btn-sm btn-admin-equipo" onclick="abrirModal('acompanante')"><i class="ti ti-plus"></i> Nuevo acompañante</button>
       </div>
       <div id="lista-acompanantes"></div>
     </div>
 
     <div id="equipo-camiones" class="equipo-screen">
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-        <button class="btn btn-dark btn-sm" onclick="abrirModal('camion')"><i class="ti ti-plus"></i> Nuevo camión</button>
+        <button class="btn btn-dark btn-sm btn-admin-equipo" onclick="abrirModal('camion')"><i class="ti ti-plus"></i> Nuevo camión</button>
       </div>
       <div id="lista-camiones"></div>
+    </div>
+
+    <div id="equipo-oficina" class="equipo-screen">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+        <button class="btn btn-dark btn-sm btn-admin-equipo" onclick="abrirModal('oficina')"><i class="ti ti-plus"></i> Nuevo usuario</button>
+      </div>
+      <div id="lista-oficina"></div>
     </div>
   </div>
 </div>
@@ -395,12 +453,52 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
 </div>
 
+<!-- Modal borrador -->
+<div class="modal-overlay" id="modal-borrador">
+  <div class="modal-card">
+    <div class="modal-title">¿Guardar borrador?</div>
+    <div style="font-size:13px;color:#888;margin-bottom:16px;">Tenés un viaje en proceso. ¿Querés guardarlo como borrador para continuar después?</div>
+    <div class="modal-actions" style="flex-direction:column;gap:8px;">
+      <button class="btn btn-dark" onclick="borrador_guardarYcontinuar()" style="justify-content:center;"><i class="ti ti-device-floppy"></i> Guardar borrador y continuar</button>
+      <button class="btn btn-red" onclick="borrador_descartarYcontinuar()" style="justify-content:center;"><i class="ti ti-trash"></i> Descartar y continuar</button>
+      <button class="btn" onclick="borrador_cancelar()" style="justify-content:center;">Volver al viaje</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal restaurar borrador -->
+<div class="modal-overlay" id="modal-restaurar">
+  <div class="modal-card">
+    <div class="modal-title"><i class="ti ti-device-floppy"></i> Borrador guardado</div>
+    <div style="font-size:13px;color:#888;margin-bottom:16px;">Hay un viaje en borrador guardado. ¿Querés continuar editándolo?</div>
+    <div class="modal-actions">
+      <button class="btn btn-dark" onclick="restaurar_si()">Continuar borrador</button>
+      <button class="btn btn-red" onclick="restaurar_no()">Descartar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal editar viaje -->
 <div class="modal-overlay" id="modal-editar">
   <div class="modal-card">
     <div class="modal-title">Editar viaje</div>
     <div class="info-bar"><i class="ti ti-info-circle"></i> Solo se editan los datos del viaje. Las entregas en curso no se modifican.</div>
-    <div class="modal-field"><div class="lbl">Zona</div><input class="inp-full" id="edit-zona" placeholder="Ej: Zona Rafaela"></div>
+    <div class="modal-field">
+      <div class="lbl">Zona</div>
+      <select class="inp-full" id="edit-zona" onchange="onEditZonaChange(this)">
+        <option value="">— Seleccioná zona —</option>
+        <option value="REPARTO LOCAL">2. REPARTO LOCAL</option>
+        <option value="ZONA SAN FRANCISCO">1. ZONA SAN FRANCISCO</option>
+        <option value="ZONA RAFAELA">3. ZONA RAFAELA</option>
+        <option value="ZONA LAS ROSAS">4. ZONA LAS ROSAS</option>
+        <option value="ZONA PIAMONTE">6. ZONA PIAMONTE</option>
+        <option value="ZONA SAN VICENTE">7. ZONA SAN VICENTE</option>
+        <option value="ZONA SAN JORGE (miércoles)">8. ZONA SAN JORGE (miércoles)</option>
+        <option value="ZONA SAN JORGE (viernes)">16. ZONA SAN JORGE (viernes)</option>
+        <option value="OTRA">10. OTRA ZONA</option>
+      </select>
+      <input class="inp-full" id="edit-zona-custom" placeholder="Escribí la zona..." style="margin-top:5px;display:none;">
+    </div>
     <div class="modal-field"><div class="lbl">Hora de salida</div><input type="time" class="inp-full" id="edit-salida"></div>
     <div class="modal-field"><div class="lbl">Chofer</div><select class="inp-full" id="edit-chofer"></select></div>
     <div class="modal-field"><div class="lbl">Acompañante</div><select class="inp-full" id="edit-acomp"></select></div>
@@ -428,7 +526,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getDatabase, ref, set, get, push, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, get, push, update, remove, onValue, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA9KkDU1wFRvfH7sIvXe0XWlT2zMdr2PP4",
@@ -443,13 +541,19 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+// Instancia secundaria para crear cuentas sin cerrar sesión del admin
+const appSecundario = initializeApp(firebaseConfig, 'crear_usuario');
+const authSecundario = getAuth(appSecundario);
 
 const GPS_DEFAULT = 'https://gps.redsecurity.com.ar/StreetZITSimple/index.html?GUID=2c0fe822-49b1-4710-ac12-f07cbf289e4a';
 const VOL_TIEMPO = {chico:15, mediano:30, grande:45};
 let paradas=[], editOpen=[], dragSrc=null, gpsLink=GPS_DEFAULT;
 let modalTipo=null, viajeEliminarId=null, monitorViajeId=null, viajeEditarId=null;
 let monitorCargando=false;
-let wspItems=[], hrNumeroActual='', empresaActual='PB', cobrosPreexistentes=[];
+let wspItems=[], hrNumeroActual='', cobrosPreexistentes=[];
+let _borradorActivo=false; // hay datos en el formulario nuevo sin publicar
+let _unsubViajes=null; // listener real-time viajes
+let _unsubMonitor=null; // listener real-time monitor
 
 async function verificarDuplicado(hrNum, paradasNuevas){
   if(!hrNum){ cargarParadas(paradasNuevas); return; }
@@ -497,27 +601,95 @@ const DEMO=[
 ];
 
 // AUTH
+let currentUserProfile = null; // perfil del usuario logueado, para audit log
+
 onAuthStateChanged(auth, async user => {
   if (!user){ window.location.href='index.html'; return; }
   document.getElementById('user-name').textContent = user.email.replace('@pb-interno.com','').replace('@pedrobravin.com.ar','');
   const snap = await get(ref(db,'usuarios/'+user.uid));
   if(!snap.exists()){
-    // Solo registrar como oficina si no está en choferes
+    // Verificar si es chofer por uid O por email (evita el registro erróneo como oficina)
     const snapC = await get(ref(db,'choferes/'+user.uid));
     if(snapC.exists()){
-      // Es chofer, redirigir
       window.location.href='chofer.html';
       return;
     }
+    // Buscar también por email en todos los choferes
+    const snapTodosChoferes = await get(ref(db,'choferes'));
+    if(snapTodosChoferes.exists()){
+      const esChoferPorEmail = Object.values(snapTodosChoferes.val()).some(c=>c.email===user.email);
+      if(esChoferPorEmail){window.location.href='chofer.html';return;}
+    }
     await set(ref(db,'usuarios/'+user.uid),{email:user.email,rol:'oficina'});
+    currentUserProfile={uid:user.uid,email:user.email,nombre:user.email.split('@')[0],rol:'oficina'};
   } else if(snap.val().rol==='chofer'){
     // Es chofer, no debería estar acá
     window.location.href='chofer.html';
     return;
+  } else if(snap.val().rol==='eliminado'){
+    // Usuario bloqueado
+    await signOut(auth);
+    window.location.href='index.html';
+    return;
+  } else {
+    currentUserProfile={uid:user.uid,...snap.val()};
   }
-  cargarViajes(); cargarE51(); cargarEquipo(); actualizarGPSUI();
+  logAudit('LOGIN','Ingreso a oficina');
+  aplicarPermisosEquipo();
+  cargarViajes(); cargarEquipo(); actualizarGPSUI();
+  cargarMonitorSelect().then(()=>{
+    const sel=document.getElementById('sel-monitor');
+    if(sel&&sel.value)cambiarMonitorViaje(sel.value);
+  });
+  // Pre-load historial data silently
+  get(ref(db,'viajes')).then(snap=>{if(snap.exists())_todosViajes=Object.values(snap.val());});
 });
 window.cerrarSesion=()=>signOut(auth).then(()=>window.location.href='index.html');
+
+// ── Control de acceso: solo Javier o Luciano gestionan el equipo ──────────
+function esAdminEquipo(){
+  if(!currentUserProfile)return false;
+  const check=(currentUserProfile.email+' '+(currentUserProfile.nombre||'')).toLowerCase();
+  return check.includes('javier')||check.includes('luciano');
+}
+function esLuciano(){
+  if(!currentUserProfile)return false;
+  const check=(currentUserProfile.email+' '+(currentUserProfile.nombre||'')).toLowerCase();
+  return check.includes('luciano');
+}
+function aplicarPermisosEquipo(){
+  const esAdmin=esAdminEquipo();
+  const esSoloLuciano=esLuciano();
+
+  // Botones de alta/baja solo para Javier o Luciano
+  document.querySelectorAll('.btn-admin-equipo').forEach(el=>{
+    el.style.display=esAdmin?'':'none';
+  });
+
+  // Solapa "Equipo" en el menú principal: solo Javier y Luciano la ven
+  const tabEquipo=document.getElementById('tab-equipo');
+  if(tabEquipo) tabEquipo.style.display=esAdmin?'':'none';
+
+  // Solapa "Oficina" dentro de Equipo: solo Luciano la ve
+  const tabOf=document.getElementById('etab-oficina');
+  const screenOf=document.getElementById('equipo-oficina');
+  if(tabOf) tabOf.style.display=esSoloLuciano?'':'none';
+  if(screenOf&&!esSoloLuciano) screenOf.style.display='none';
+}
+function logAudit(accion, detalle=''){
+  if(!currentUserProfile)return;
+  const ahora=new Date();
+  push(ref(db,'historial'),{
+    ts:ahora.getTime(),
+    fecha:ahora.toLocaleDateString('es-AR'),
+    hora:ahora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}),
+    uid:currentUserProfile.uid,
+    nombre:currentUserProfile.nombre||currentUserProfile.email||'',
+    rol:currentUserProfile.rol||'oficina',
+    accion,
+    detalle:String(detalle).substring(0,300)
+  }).catch(()=>{}); // silencioso — no interrumpe el flujo
+}
 
 // GPS
 function actualizarGPSUI(){
@@ -525,9 +697,44 @@ function actualizarGPSUI(){
   document.getElementById('gps-dot').style.background=ok?'#25D366':'#EF4444';
   document.getElementById('gps-preview').textContent=gpsLink||'Sin link configurado';
 }
-window.toggleGPSEdit=()=>{const a=document.getElementById('gps-edit-area');const v=a.style.display!=='none';a.style.display=v?'none':'block';if(!v)document.getElementById('gps-link-input').value=gpsLink;};
-window.guardarGPS=()=>{const v=document.getElementById('gps-link-input').value.trim();if(v)gpsLink=v;document.getElementById('gps-edit-area').style.display='none';actualizarGPSUI();};
-window.abrirRedSecurity=()=>window.open('https://gps.redsecurity.com.ar/StreetZ/','_blank');
+window.onEditZonaChange=function(sel){
+  const c=document.getElementById('edit-zona-custom');
+  c.style.display=sel.value==='OTRA'?'block':'none';
+  if(sel.value!=='OTRA')c.value='';
+};
+function getEditZona(){
+  const sel=document.getElementById('edit-zona');
+  const c=document.getElementById('edit-zona-custom');
+  return sel.value==='OTRA'?c.value.trim():(sel.value||'');
+}
+
+window.onZonaChange=function(sel){
+  const custom=document.getElementById('inp-zona');
+  if(sel.value==='OTRA'){custom.style.display='block';custom.value='';custom.focus();}
+  else{custom.style.display='none';custom.value=sel.value;}
+};
+
+// Helper to get zona value
+function getZona(){
+  const sel=document.getElementById('sel-zona');
+  const inp=document.getElementById('inp-zona');
+  return sel.value==='OTRA'?inp.value.trim():(sel.value||inp.value.trim());
+}
+
+window.toggleGPSGuia=function(){
+  const g=document.getElementById('gps-guia');
+  const btn=document.getElementById('btn-gps-guia');
+  const visible=g.style.display!=='none';
+  g.style.display=visible?'none':'block';
+  btn.innerHTML=visible?'<i class="ti ti-help"></i> ¿Cómo generar?':'<i class="ti ti-x"></i> Cerrar guía';
+};
+window.guardarGPS=function(){
+  const v=document.getElementById('gps-link-input').value.trim();
+  if(v)gpsLink=v;
+  actualizarGPSUI();
+  document.getElementById('gps-guia').style.display='none';
+  document.getElementById('btn-gps-guia').innerHTML='<i class="ti ti-help"></i> ¿Cómo generar?';
+};
 
 // ETAs
 function getLocalidades(){return[...new Set(paradas.map(p=>p.localidad))];}
@@ -578,6 +785,7 @@ function renderParadasLogistica(etas){
             <option value="grande" ${p.vol==='grande'?'selected':''}>45'</option>
           </select>
           <div style="text-align:right;min-width:36px;"><div style="font-size:13px;font-weight:700;">${etas[i]}</div><div style="font-size:9px;color:#888;">ETA</div></div>
+          ${waNum(p.tel)?`<a href="https://wa.me/${waNum(p.tel)}?text=${encodeURIComponent(buildWspTxt(p,etas[i]))}" target="_blank" class="btn btn-wsp btn-icon" title="Enviar WhatsApp a ${p.cliente}"><i class="ti ti-brand-whatsapp"></i></a>`:''}
           <button class="btn btn-icon" onclick="toggleEdit(${i})" style="color:${isOpen?'#1D4ED8':'#ccc'}"><i class="ti ti-pencil"></i></button>
         </div>
       </div>
@@ -599,28 +807,49 @@ function renderParadasLogistica(etas){
     div.addEventListener('dragend',()=>{div.classList.remove('dragging');document.querySelectorAll('.card').forEach(c=>c.classList.remove('drop-target'));});
     div.addEventListener('dragover',e=>{e.preventDefault();div.classList.add('drop-target');});
     div.addEventListener('dragleave',()=>div.classList.remove('drop-target'));
-    div.addEventListener('drop',e=>{e.preventDefault();div.classList.remove('drop-target');if(dragSrc===null||dragSrc===i)return;const m=paradas.splice(dragSrc,1)[0];const me=editOpen.splice(dragSrc,1)[0];paradas.splice(i,0,m);editOpen.splice(i,0,me);dragSrc=null;recalcular();});
+    div.addEventListener('drop',e=>{e.preventDefault();div.classList.remove('drop-target');if(dragSrc===null||dragSrc===i)return;const m=paradas.splice(dragSrc,1)[0];const me=editOpen.splice(dragSrc,1)[0];paradas.splice(i,0,m);editOpen.splice(i,0,me);dragSrc=null;recalcular();marcarEditado();});
     cont.appendChild(div);
   });
 }
 
 window.toggleEdit=i=>{editOpen[i]=!editOpen[i];recalcular();};
-window.editarCampo=(i,c,v)=>{paradas[i][c]=v.trim();if(c==='localidad')recalcular();};
-window.asignarLoc=(i,l)=>{paradas[i].localidad=l;recalcular();};
-window.cambiarVol=(i,v)=>{paradas[i].vol=v;recalcular();};
+window.editarCampo=(i,c,v)=>{paradas[i][c]=v.trim();if(c==='localidad')recalcular();marcarEditado();};
+window.asignarLoc=(i,l)=>{paradas[i].localidad=l;recalcular();marcarEditado();};
+window.cambiarVol=(i,v)=>{paradas[i].vol=v;recalcular();marcarEditado();};
 
 // PUBLICAR
 window.publicarViaje=async function(){
+  // Validación completa
+  const zona=getZona();
+  if(!zona){mostrarToast('⚠️ Seleccioná la zona','#DC2626');document.getElementById('sel-zona').focus();return;}
+  if(!paradas.length){mostrarToast('⚠️ Cargá las paradas del viaje','#DC2626');return;}
+  const choferId=document.getElementById('sel-chofer').value;
+  if(!choferId){
+    mostrarToast('⚠️ Asigná un chofer al viaje','#DC2626');
+    document.getElementById('sel-chofer').style.borderColor='#DC2626';
+    return;
+  }
+  const acompId=document.getElementById('sel-acompanante').value;
+  if(!acompId){
+    mostrarToast('⚠️ Asigná un acompañante al viaje','#DC2626');
+    document.getElementById('sel-acompanante').style.borderColor='#DC2626';
+    return;
+  }
+  const camionId=document.getElementById('sel-camion').value;
+  if(!camionId){
+    mostrarToast('⚠️ Asigná un camión al viaje','#DC2626');
+    document.getElementById('sel-camion').style.borderColor='#DC2626';
+    return;
+  }
+  // Limpiar bordes de error
+  ['sel-chofer','sel-acompanante','sel-camion'].forEach(id=>document.getElementById(id).style.borderColor='');
   const hs=document.getElementById('hora-salida').value;
   const tz=parseInt(document.getElementById('tiempo-zona').value)||50;
   const etas=calcETAs();
   const fecha=new Date();
-  const choferId=document.getElementById('sel-chofer').value;
   const choferNombre=document.getElementById('sel-chofer').options[document.getElementById('sel-chofer').selectedIndex]?.text||'Sin asignar';
   const acompNombre=document.getElementById('sel-acompanante').options[document.getElementById('sel-acompanante').selectedIndex]?.text||'';
   const camionNombre=document.getElementById('sel-camion').options[document.getElementById('sel-camion').selectedIndex]?.text||'';
-  const zona=document.getElementById('inp-zona').value.trim();
-  if(!zona){alert('La zona es obligatoria. Completá el campo Zona antes de publicar.');return;}
   const hrRef=push(ref(db,'viajes'));
   const hrData={
     id:hrRef.key,
@@ -630,7 +859,6 @@ window.publicarViaje=async function(){
     horaSalida:hs,tiempoZona:tz,gpsLink,
     choferId,choferNombre,acompNombre,camionNombre,zona,
     hrNumero:hrNumeroActual||'',
-    empresa:empresaActual||'PB',
     estado:'activo',
     paradas:paradas.map((p,i)=>({...p,eta:etas[i],estado:'pendiente'})),
     totalKg:paradas.reduce((s,p)=>s+p.kg,0)
@@ -648,16 +876,12 @@ window.publicarViaje=async function(){
         ts:Date.now(),origen:'preexistente',inmutable:true
       });
     }
+    limpiarBorrador();
+    logAudit('PUBLICAR_VIAJE',`HR ${hrNumeroActual||'s/n'} · ${getZona()} · ${paradas.length} paradas`);
     monitorViajeId=hrRef.key;
     document.getElementById('publicado-card').style.display='block';
-    // E51 no tiene WSP masivo
-    if(empresaActual==='E51'){
-      document.querySelector('.wsp-masivo-card')&&(document.querySelector('.wsp-masivo-card').style.display='none');
-      document.getElementById('publicado-card').innerHTML=`<div style="font-size:13px;font-weight:700;color:#7C3AED;margin-bottom:6px;"><i class="ti ti-check"></i> Viaje E51 publicado</div><div style="font-size:12px;color:#888;">Sin aviso a clientes (empresa interna).${cobrosPreexistentes.length>0?` ${cobrosPreexistentes.length} cobro${cobrosPreexistentes.length>1?'s':''} preexistente${cobrosPreexistentes.length>1?'s':''} pre-cargado${cobrosPreexistentes.length>1?'s':''}.`:''}</div>`;
-    }
-    document.getElementById('tab-monitor').disabled=false;
-    if(empresaActual==='PB')renderWSPMasivo(etas);
-    cargarViajes();cargarE51();cargarMonitorSelect();
+    renderWSPMasivo(etas);
+    cargarViajes();cargarMonitorSelect();
   }catch(e){alert('Error: '+e.message);}
 };
 
@@ -667,12 +891,13 @@ function renderWSPMasivo(etas){
   wspItems=[];
   let count=0;
   paradas.forEach((p,i)=>{
-    if(!p.tel)return;
+    const waTel=waNum(p.tel);
+    if(!waTel)return;
     count++;
-    const txt=`🚛 *Pedro Bravin S.A* — Tu pedido llega hoy.\n\n⏱ Hora estimada: *${etas[i]} hs*\n_(puede variar según el recorrido)_\n\n📍 Seguí el camión en vivo:\n${gpsLink}\n\nConsultas: comunicarse con nosotros.`;
-    wspItems.push({tel:p.tel,txt,cliente:p.cliente});
+    const txt=buildWspTxt(p,etas[i]);
+    wspItems.push({tel:waTel,txt,cliente:p.cliente});
     const div=document.createElement('div');div.className='wsp-preview-item';
-    div.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;"><div><div style="font-size:12px;font-weight:600;">${p.cliente}</div><div style="font-size:11px;color:#888;">${p.localidad} · ${etas[i]} hs · ${p.tel}</div></div><a href="https://wa.me/${p.tel}?text=${encodeURIComponent(txt)}" target="_blank" class="btn btn-wsp btn-sm"><i class="ti ti-brand-whatsapp"></i></a></div>`;
+    div.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;"><div><div style="font-size:12px;font-weight:600;">${p.cliente}</div><div style="font-size:11px;color:#888;">${p.localidad} · ${etas[i]} hs · ${p.tel}</div></div><a href="https://wa.me/${waTel}?text=${encodeURIComponent(txt)}" target="_blank" class="btn btn-wsp btn-sm"><i class="ti ti-brand-whatsapp"></i></a></div>`;
     cont.appendChild(div);
   });
   document.getElementById('wsp-count').textContent=count+' clientes con teléfono cargado';
@@ -697,73 +922,100 @@ function abrirSiguienteWSP(){
   }
 }
 
-// VIAJES
-async function cargarViajes(){
-  const snap=await get(ref(db,'viajes'));
-  renderViajesList(snap,'PB','viajes-lista');
-}
-
-async function cargarE51(){
-  const snap=await get(ref(db,'viajes'));
-  renderViajesList(snap,'E51','e51-lista');
-}
-
-function renderViajesList(snap, empresa, contenedorId){
-  const cont=document.getElementById(contenedorId);
-  const esE51=empresa==='E51';
-  if(!snap.exists()){
-    cont.innerHTML=`<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px;"><i class="ti ti-truck-delivery" style="font-size:32px;display:block;margin-bottom:8px;"></i>No hay viajes ${esE51?'E51':'PB'}.<br>Creá uno nuevo.</div>`;
-    return;
-  }
-  const raw=snap.val();const todos=Object.keys(raw).map(k=>({...raw[k],id:raw[k].id||k})).filter(v=>v&&typeof v==="object");
-  const viajes=todos.filter(v=>(v.empresa||'PB')===empresa).sort((a,b)=>{
-    const tA=a.fechaTs||0,tB=b.fechaTs||0;
-    if(tB!==tA)return tB-tA;
-    return (a.zona||'').localeCompare(b.zona||'');
+// VIAJES — real-time listener
+function cargarViajes(){
+  if(_unsubViajes){off(ref(db,'viajes'),_unsubViajes);_unsubViajes=null;}
+  const viajesRef=ref(db,'viajes');
+  _unsubViajes=onValue(viajesRef,(snap)=>{
+    renderViajesList(snap,'viajes-lista',true);
   });
-  if(viajes.length===0){
-    cont.innerHTML=`<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px;">No hay viajes ${esE51?'E51':'PB'} todavía.</div>`;
-    return;
-  }
+}
+
+// All viajes cached for historial
+let _todosViajes=[];
+async function cargarHistorial(){
+  const snap=await get(ref(db,'viajes'));
+  if(!snap.exists()){document.getElementById('historial-lista').innerHTML='<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px;">No hay viajes en el historial.</div>';return;}
+  _todosViajes=Object.values(snap.val());
+  filtrarHistorial();
+}
+
+window.filtrarHistorial=function(){
+  const buscar=(document.getElementById('hist-buscar')?.value||'').toLowerCase();
+  let viajes=_todosViajes;
+  if(buscar)viajes=viajes.filter(v=>(v.zona||'').toLowerCase().includes(buscar)||(v.choferNombre||'').toLowerCase().includes(buscar));
+  viajes=viajes.sort((a,b)=>{const tA=a.fechaTs||0,tB=b.fechaTs||0;if(tB!==tA)return tB-tA;return(a.zona||'').localeCompare(b.zona||'');});
+  const cont=document.getElementById('historial-lista');
+  if(viajes.length===0){cont.innerHTML='<div style="text-align:center;padding:2rem;color:#aaa;font-size:13px;">Sin viajes para este filtro.</div>';return;}
   cont.innerHTML='';
   let lastFecha='';
   viajes.forEach(v=>{
-    const ps=Array.isArray(v.paradas)?v.paradas:Object.values(v.paradas||{});
+    const ps=v.paradas||[];
     const ent=ps.filter(p=>p.estado==='entregado').length;
-    const sin=ps.filter(p=>p.estado!=='pendiente'&&p.estado!=='entregado').length;
-    const pct=Math.round(ent/ps.length*100);
+    const pct=ps.length>0?Math.round(ent/ps.length*100):0;
     if(v.fecha!==lastFecha){
       lastFecha=v.fecha;
       const sep=document.createElement('div');
-      sep.style.cssText='display:flex;align-items:center;gap:8px;padding:10px 0 6px;margin-top:4px;';
-      sep.innerHTML=`<div style="flex:1;height:1px;background:#e5e5e5;"></div><span style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;">${v.fecha}</span><div style="flex:1;height:1px;background:#e5e5e5;"></div>`;
+      sep.style.cssText='display:flex;align-items:center;gap:8px;padding:8px 0 4px;';
+      sep.innerHTML=`<div style="flex:1;height:1px;background:#e5e5e5;"></div><span style="font-size:11px;font-weight:700;color:#888;">${v.fecha}</span><div style="flex:1;height:1px;background:#e5e5e5;"></div>`;
       cont.appendChild(sep);
     }
-    const empresaBadge=esE51?'<span style="font-size:10px;background:#F5F3FF;color:#7C3AED;padding:1px 6px;border-radius:4px;font-weight:700;margin-left:6px;">E51</span>':'';
+
+    const div=document.createElement('div');
+    div.style.cssText='background:#fff;border:1px solid #e5e5e5;border-radius:10px;padding:12px;margin-bottom:6px;display:flex;align-items:center;gap:10px;cursor:pointer;';
+    div.onclick=()=>verMonitor(v.id);
+    div.innerHTML=`<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;">${v.zona||'Sin zona'}${empBadge}</div><div style="font-size:11px;color:#888;">${v.choferNombre} · ${v.horaSalida} hs · ${ps.length} paradas</div><div style="background:#e5e5e5;border-radius:99px;height:4px;margin-top:6px;overflow:hidden;"><div style="background:${v.estado==='completado'?'#16a34a':'#3B82F6'};height:100%;width:${pct}%;"></div></div></div><span style="font-size:10px;font-weight:700;padding:3px 8px;border-radius:5px;flex-shrink:0;${v.estado==='completado'?'background:#D1FAE5;color:#065F46;':'background:#DBEAFE;color:#1D4ED8;'}">${v.estado==='completado'?'Completado':'Activo'}</span>`;
+    cont.appendChild(div);
+  });
+}
+
+function renderViajesList(snap, contenedorId, soloHoy=false){
+  const cont=document.getElementById(contenedorId);
+  if(!snap.exists()){
+    cont.innerHTML=`<div style="text-align:center;padding:3rem 1rem;color:#aaa;"><div style="font-size:40px;margin-bottom:10px;">🚛</div><div style="font-size:14px;font-weight:600;margin-bottom:4px;">Sin viajes activos</div><div style="font-size:12px;">Creá un nuevo viaje desde la solapa + Nuevo</div></div>`;
+    return;
+  }
+  const hoy=new Date().toLocaleDateString('es-AR');
+  let viajes=Object.values(snap.val());
+  // Solo viajes de hoy o activos
+  if(soloHoy)viajes=viajes.filter(v=>v.fecha===hoy||v.estado==='activo');
+  viajes=viajes.sort((a,b)=>{const tA=a.fechaTs||0,tB=b.fechaTs||0;if(tB!==tA)return tB-tA;return(a.zona||'').localeCompare(b.zona||'');});
+  if(viajes.length===0){
+    cont.innerHTML=`<div style="text-align:center;padding:3rem 1rem;color:#aaa;"><div style="font-size:40px;margin-bottom:10px;">✅</div><div style="font-size:14px;font-weight:600;margin-bottom:4px;">Sin viajes activos hoy</div><div style="font-size:12px;">Los viajes anteriores están en <strong>Historial</strong></div></div>`;
+    return;
+  }
+  cont.innerHTML='';
+  viajes.forEach(v=>{
+    const ps=v.paradas||[];
+    const ent=ps.filter(p=>p.estado==='entregado').length;
+    const sin=ps.filter(p=>p.estado!=='pendiente'&&p.estado!=='entregado').length;
+    const pct=ps.length>0?Math.round(ent/ps.length*100):0;
+
     const div=document.createElement('div');div.className='viaje-card';
     div.innerHTML=`
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">
         <div>
-          <div style="font-size:14px;font-weight:700;">${v.zona||'Sin zona'}${empresaBadge}</div>
-          <div style="font-size:12px;color:#555;margin-top:1px;">${v.choferNombre}${v.camionNombre?' · '+v.camionNombre:''}${v.acompNombre?' · '+v.acompNombre:''}</div>
-          <div style="font-size:11px;color:#888;margin-top:1px;">${v.horaSalida} hs · ${ps.length} paradas · ${v.totalKg?v.totalKg.toLocaleString('es-AR',{maximumFractionDigits:0})+' kg':''}</div>
+          <div style="font-size:15px;font-weight:700;">${v.zona||'Sin zona'}${empBadge}</div>
+          <div style="font-size:12px;color:#555;margin-top:2px;">${v.choferNombre}${v.camionNombre?' · '+v.camionNombre:''}${v.acompNombre?' · '+v.acompNombre:''}</div>
+          <div style="font-size:11px;color:#888;margin-top:1px;">${v.horaSalida} hs · ${ps.length} paradas${v.totalKg?' · '+v.totalKg.toLocaleString('es-AR',{maximumFractionDigits:0})+' kg':''}</div>
         </div>
         <span class="badge ${v.estado==='activo'?'badge-active':'badge-done'}">${v.estado==='activo'?'Activo':'Completado'}</span>
       </div>
-      <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-bottom:6px;">
-        <span>Entregadas: <strong>${ent}</strong></span>
-        <span>Sin entregar: <strong>${sin}</strong></span>
-        <span>Pendientes: <strong>${ps.length-ent-sin}</strong></span>
+      <div style="display:flex;gap:12px;font-size:12px;color:#888;margin-bottom:8px;">
+        <span>✅ <strong style="color:#065F46;">${ent}</strong> entregadas</span>
+        <span>❌ <strong style="color:#991B1B;">${sin}</strong> sin entregar</span>
+        <span>⏳ <strong style="color:#1a1a1a;">${ps.length-ent-sin}</strong> pendientes</span>
       </div>
       <div class="progress-mini"><div class="progress-fill" style="width:${pct}%"></div></div>
       <div class="viaje-actions">
-        <button class="btn btn-sm" onclick="verMonitor('${v.id}')"><i class="ti ti-eye"></i> Monitor</button>
+        <button class="btn btn-dark btn-sm" onclick="verMonitor('${v.id}')"><i class="ti ti-eye"></i> Ver monitor</button>
         <button class="btn btn-sm" onclick="editarViaje('${v.id}',event)" style="background:#EFF6FF;color:#1D4ED8;border-color:#BFDBFE;"><i class="ti ti-pencil"></i> Editar</button>
         <button class="btn btn-sm btn-red" onclick="pedirEliminar('${v.id}',event)"><i class="ti ti-trash"></i></button>
       </div>`;
     cont.appendChild(div);
   });
 }
+
 
 const TEL_ADMIN='5493401525118';   // Paula — Administración Clientes
 const TEL_LOGISTICA='5493401523416'; // Luis — Logística
@@ -819,6 +1071,7 @@ window.guardarRecOficina=async function(){
   };
   try{
     await push(ref(db,'viajes/'+viajeDevId+'/recepciones'),rec);
+    logAudit('RECEPCION_REGISTRADA',`${rec.cliente} · ${rec.material} · ${rec.estado}`);
     cerrarRecOf();cargarMonitor();
   }catch(e){err.textContent='Error al guardar';err.style.display='block';}
 };
@@ -873,6 +1126,7 @@ window.guardarCobroOficina=async function(){
   };
   try{
     await push(ref(db,'viajes/'+viajeCobroId+'/cobros'),cobro);
+    logAudit('COBRO_REGISTRADO',`${cliente} · ${tipoCobroOficina} · $${monto.toLocaleString('es-AR')}`);
     cerrarCobroOf();
     cargarMonitor();
   }catch(e){err.textContent='Error al guardar';err.style.display='block';}
@@ -1029,13 +1283,10 @@ window.enviarResumenOficina=async function(id){
 };
 
 window.verMonitor=function(id){
-  monitorViajeId=id;
-  document.getElementById('tab-monitor').disabled=false;
-  // Set monitor select value then render once
+  monitorViajeId=id;_monitorId=id;
   cargarMonitorSelect().then(()=>{
-    const sel=document.getElementById('sel-monitor');
-    sel.value=id;
-    cargarMonitor();
+    document.getElementById('sel-monitor').value=id;
+    cambiarMonitorViaje(id);
   });
   showScreen('monitor');
 };
@@ -1065,13 +1316,30 @@ async function cargarMonitorSelect(){
     sel.appendChild(o);
   });
   if(monitorViajeId)sel.value=monitorViajeId;
+  else if(sel.options.length>0){sel.selectedIndex=0;}
 }
 
+window.cambiarMonitorViaje=function(id){
+  if(_unsubMonitor){off(ref(db,'viajes/'+(_monitorId||id)),_unsubMonitor);_unsubMonitor=null;}
+  _monitorId=id||monitorViajeId;
+  if(!_monitorId)return;
+  // Real-time listener for the selected trip
+  _unsubMonitor=onValue(ref(db,'viajes/'+_monitorId),async()=>{
+    await _renderMonitor(_monitorId);
+  });
+};
+let _monitorId=null;
+
 window.cargarMonitor=async function(){
+  const id=document.getElementById('sel-monitor').value||_monitorId||monitorViajeId;
+  if(id&&id!==_monitorId)return cambiarMonitorViaje(id);
+  if(_monitorId)return _renderMonitor(_monitorId);
+};
+
+async function _renderMonitor(id){
   if(monitorCargando)return;
   monitorCargando=true;
   try{
-  const id=document.getElementById('sel-monitor').value||monitorViajeId;
   if(!id){monitorCargando=false;return;}
   const snap=await get(ref(db,'viajes/'+id));
   if(!snap.exists()){monitorCargando=false;return;}
@@ -1189,12 +1457,45 @@ window.cargarMonitor=async function(){
   }
   cont.appendChild(secR);
   }finally{monitorCargando=false;}
-};
+}
 
 // EQUIPO
 async function cargarEquipo(){
-  await Promise.all([cargarChoferes(),cargarAcompanantes(),cargarCamiones()]);
+  await Promise.all([cargarChoferes(),cargarAcompanantes(),cargarCamiones(),cargarOficina()]);
 }
+
+async function cargarOficina(){
+  const snap=await get(ref(db,'usuarios'));
+  const cont=document.getElementById('lista-oficina');
+  if(!cont)return;
+  if(!snap.exists()){cont.innerHTML='<div style="text-align:center;padding:1.5rem;color:#aaa;font-size:13px;">No hay usuarios de oficina</div>';return;}
+  // Solo mostrar los que tienen rol='oficina' Y tienen nombre explícito
+  // (filtra los choferes que quedaron mal registrados como oficina sin nombre)
+  const usuarios=Object.entries(snap.val()).filter(([,u])=>
+    u.rol==='oficina' && u.nombre && u.nombre.trim()!=='' && u.nombre!=='Oficina'
+  );
+  if(!usuarios.length){cont.innerHTML='<div style="text-align:center;padding:1.5rem;color:#aaa;font-size:13px;">No hay usuarios de oficina</div>';return;}
+  cont.innerHTML='';
+  usuarios.forEach(([id,u])=>{
+    const ini=(u.nombre||'?').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+    const div=document.createElement('div');div.className='equipo-item';
+    const adminBtns=esAdminEquipo()?`<div style="display:flex;gap:5px;"><button onclick="abrirModal('oficina','${id}',${JSON.stringify({nombre:u.nombre,email:u.email})})" style="font-size:11px;color:#1D4ED8;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-pencil"></i></button><button onclick="eliminarOficina('${id}','${u.nombre}')" style="font-size:11px;color:#DC2626;background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i></button></div>`:'';
+    div.innerHTML=`<div class="equipo-avatar" style="background:#EDE9FE;color:#5B21B6;">${ini}</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${u.nombre}</div><div style="font-size:11px;color:#888;">${u.email||''}</div></div>${adminBtns}`;
+    cont.appendChild(div);
+  });
+}
+
+window.eliminarOficina=async function(id,nombre){
+  if(!esAdminEquipo()){mostrarToast('⛔ Solo Javier o Luciano pueden hacer esto','#DC2626');return;}
+  if(!confirm(`¿Bloquear el acceso a ${nombre}?\nEl usuario ya no podrá ingresar a la aplicación.`))return;
+  try{
+    // Marcamos rol como 'eliminado' — el onAuthStateChanged lo desconectará
+    await update(ref(db,'usuarios/'+id),{rol:'eliminado'});
+    cargarOficina();
+    mostrarToast('Acceso bloqueado para '+nombre,'#065F46');
+    logAudit('USUARIO_BLOQUEADO',`${nombre} (uid: ${id})`);
+  }catch(e){alert('Error: '+e.message);}
+};
 
 async function cargarChoferes(){
   const snap=await get(ref(db,'choferes'));
@@ -1209,10 +1510,22 @@ async function cargarChoferes(){
     [sel,selE].forEach(s=>{if(!s)return;const o=document.createElement('option');o.value=id;o.textContent=c.nombre;s.appendChild(o);});
     const ini=c.nombre.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
     const div=document.createElement('div');div.className='equipo-item';
-    div.innerHTML=`<div class="equipo-avatar">${ini}</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${c.nombre}</div><div style="font-size:11px;color:#888;">Usuario: ${c.usuario}</div></div>`;
+    const adminBtns=esAdminEquipo()?`<div style="display:flex;gap:5px;"><button onclick="abrirModal('chofer','${id}',${JSON.stringify({nombre:c.nombre,usuario:c.usuario})})" style="font-size:11px;color:#1D4ED8;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-pencil"></i></button><button onclick="eliminarChofer('${id}','${c.nombre}')" style="font-size:11px;color:#DC2626;background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i></button></div>`:'';
+    div.innerHTML=`<div class="equipo-avatar">${ini}</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${c.nombre}</div><div style="font-size:11px;color:#888;">Usuario: ${c.usuario}</div></div>${adminBtns}`;
     cont.appendChild(div);
   });
 }
+
+window.eliminarChofer=async function(id,nombre){
+  if(!esAdminEquipo()){mostrarToast('⛔ Solo Javier o Luciano pueden eliminar choferes','#DC2626');return;}
+  if(!confirm('¿Eliminar a '+nombre+'?\nSe eliminará de la lista de choferes.'))return;
+  try{
+    await remove(ref(db,'choferes/'+id));
+    await remove(ref(db,'usuarios/'+id));
+    await remove(ref(db,'asignaciones/'+id));
+    cargarChoferes();
+  }catch(e){alert('Error al eliminar: '+e.message);}
+};
 
 async function cargarAcompanantes(){
   const snap=await get(ref(db,'acompanantes'));
@@ -1227,10 +1540,18 @@ async function cargarAcompanantes(){
     [sel,selE].forEach(s=>{if(!s)return;const o=document.createElement('option');o.value=id;o.textContent=c.nombre;s.appendChild(o);});
     const ini=c.nombre.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
     const div=document.createElement('div');div.className='equipo-item';
-    div.innerHTML=`<div class="equipo-avatar aco">${ini}</div><div><div style="font-size:13px;font-weight:600;">${c.nombre}</div></div>`;
+    const adminBtns=esAdminEquipo()?`<div style="display:flex;gap:5px;"><button onclick="abrirModal('acompanante','${id}',${JSON.stringify({nombre:c.nombre})})" style="font-size:11px;color:#1D4ED8;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-pencil"></i></button><button onclick="eliminarAcomp('${id}','${c.nombre}')" style="font-size:11px;color:#DC2626;background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i></button></div>`:'';
+    div.innerHTML=`<div class="equipo-avatar aco">${ini}</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${c.nombre}</div></div>${adminBtns}`;
     cont.appendChild(div);
   });
 }
+
+window.eliminarAcomp=async function(id,nombre){
+  if(!esAdminEquipo()){mostrarToast('⛔ Solo Javier o Luciano pueden eliminar acompañantes','#DC2626');return;}
+  if(!confirm('¿Eliminar a '+nombre+'?'))return;
+  try{await remove(ref(db,'acompanantes/'+id));cargarAcompanantes();}
+  catch(e){alert('Error: '+e.message);}
+};
 
 async function cargarCamiones(){
   const snap=await get(ref(db,'camiones'));
@@ -1244,62 +1565,126 @@ async function cargarCamiones(){
   Object.entries(snap.val()).forEach(([id,c])=>{
     [sel,selE].forEach(s=>{if(!s)return;const o=document.createElement('option');o.value=id;o.textContent=c.nombre+' / '+c.patente;s.appendChild(o);});
     const div=document.createElement('div');div.className='equipo-item';
-    div.innerHTML=`<div class="equipo-avatar cam"><i class="ti ti-truck" style="font-size:16px;"></i></div><div><div style="font-size:13px;font-weight:600;">${c.nombre}</div><div style="font-size:11px;color:#888;">${c.patente}</div></div>`;
+    const adminBtns=esAdminEquipo()?`<div style="display:flex;gap:5px;"><button onclick="abrirModal('camion','${id}',${JSON.stringify({nombre:c.nombre,patente:c.patente})})" style="font-size:11px;color:#1D4ED8;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-pencil"></i></button><button onclick="eliminarCamion('${id}','${c.nombre}')" style="font-size:11px;color:#DC2626;background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i></button></div>`:'';
+    div.innerHTML=`<div class="equipo-avatar cam"><i class="ti ti-truck" style="font-size:16px;"></i></div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${c.nombre}</div><div style="font-size:11px;color:#888;">${c.patente}</div></div>${adminBtns}`;
     cont.appendChild(div);
   });
 }
 
+window.eliminarCamion=async function(id,nombre){
+  if(!esAdminEquipo()){mostrarToast('⛔ Solo Javier o Luciano pueden eliminar camiones','#DC2626');return;}
+  if(!confirm('¿Eliminar camión '+nombre+'?'))return;
+  try{await remove(ref(db,'camiones/'+id));cargarCamiones();}
+  catch(e){alert('Error: '+e.message);}
+};
+
 // MODAL EQUIPO
-window.abrirModal=function(tipo){
+let equipoEditarId=null, equipoEditarTipo=null;
+
+window.abrirModal=function(tipo,id=null,datos={}){
+  if(!esAdminEquipo()){mostrarToast('⛔ Solo Javier o Luciano pueden gestionar el equipo','#DC2626');return;}
   modalTipo=tipo;
-  const titulos={chofer:'Nuevo chofer',acompanante:'Nuevo acompañante',camion:'Nuevo camión'};
+  equipoEditarId=id;
+  equipoEditarTipo=tipo;
+  const esEdicion=!!id;
+  const titulos={
+    chofer: esEdicion?'Editar chofer':'Nuevo chofer',
+    acompanante: esEdicion?'Editar acompañante':'Nuevo acompañante',
+    camion: esEdicion?'Editar camión':'Nuevo camión',
+    oficina: esEdicion?'Editar usuario de oficina':'Nuevo usuario de oficina'
+  };
   document.getElementById('modal-titulo').textContent=titulos[tipo];
   document.getElementById('modal-error').style.display='none';
   const campos=document.getElementById('modal-campos');
   if(tipo==='chofer'){
     campos.innerHTML=`
-      <div class="modal-field"><div class="lbl">Nombre completo</div><input class="inp-full" id="f-nombre" placeholder="Ej: Esteban Agustín"></div>
-      <div class="modal-field"><div class="lbl">Usuario (sin espacios)</div><input class="inp-full" id="f-usuario" placeholder="Ej: esteban" autocapitalize="none"></div>
-      <div class="modal-field"><div class="lbl">Contraseña</div><input class="inp-full" type="password" id="f-pass" placeholder="Mínimo 6 caracteres"></div>`;
+      <div class="modal-field"><div class="lbl">Nombre completo</div><input class="inp-full" id="f-nombre" placeholder="Ej: Esteban Agustín" value="${datos.nombre||''}"></div>
+      ${!esEdicion?`<div class="modal-field"><div class="lbl">Usuario (sin espacios)</div><input class="inp-full" id="f-usuario" placeholder="Ej: esteban" autocapitalize="none" value="${datos.usuario||''}"></div>
+      <div class="modal-field"><div class="lbl">Contraseña</div><input class="inp-full" type="password" id="f-pass" placeholder="Mínimo 6 caracteres"></div>`
+      :`<div class="modal-field"><div class="lbl">Usuario</div><input class="inp-full" value="${datos.usuario||''}" disabled style="background:#f5f5f5;color:#888;"></div>`}`;
   } else if(tipo==='acompanante'){
-    campos.innerHTML=`<div class="modal-field"><div class="lbl">Nombre completo</div><input class="inp-full" id="f-nombre" placeholder="Ej: Juan García"></div>`;
-  } else {
+    campos.innerHTML=`<div class="modal-field"><div class="lbl">Nombre completo</div><input class="inp-full" id="f-nombre" placeholder="Ej: Juan García" value="${datos.nombre||''}"></div>`;
+  } else if(tipo==='camion'){
     campos.innerHTML=`
-      <div class="modal-field"><div class="lbl">Nombre / Apodo</div><input class="inp-full" id="f-nombre" placeholder="Ej: BALANCIN"></div>
-      <div class="modal-field"><div class="lbl">Patente</div><input class="inp-full" id="f-patente" placeholder="Ej: AE277KY"></div>`;
+      <div class="modal-field"><div class="lbl">Nombre / Apodo</div><input class="inp-full" id="f-nombre" placeholder="Ej: BALANCIN" value="${datos.nombre||''}"></div>
+      <div class="modal-field"><div class="lbl">Patente</div><input class="inp-full" id="f-patente" placeholder="Ej: AE277KY" value="${datos.patente||''}"></div>`;
+  } else if(tipo==='oficina'){
+    campos.innerHTML=`
+      <div class="modal-field"><div class="lbl">Nombre completo</div><input class="inp-full" id="f-nombre" placeholder="Ej: Luis Isleños" value="${datos.nombre||''}"></div>
+      ${!esEdicion?`
+      <div class="modal-field"><div class="lbl">Email de acceso</div><input class="inp-full" id="f-email" type="email" placeholder="nombre@pb-interno.com" value="${datos.email||''}"></div>
+      <div class="modal-field"><div class="lbl">Contraseña inicial</div><input class="inp-full" type="password" id="f-pass" placeholder="Mínimo 6 caracteres"></div>`
+      :`<div class="modal-field"><div class="lbl">Email</div><input class="inp-full" value="${datos.email||''}" disabled style="background:#f5f5f5;color:#888;"></div>`}`;
   }
+  // Cambiar botón guardar
+  document.querySelector('#modal-equipo .modal-actions .btn-dark').textContent=esEdicion?'Guardar cambios':'Guardar';
   document.getElementById('modal-equipo').classList.add('open');
 };
 
 window.cerrarModal=()=>document.getElementById('modal-equipo').classList.remove('open');
 
 window.guardarEquipo=async function(){
+  if(!esAdminEquipo()){mostrarToast('⛔ Solo Javier o Luciano pueden gestionar el equipo','#DC2626');return;}
   const err=document.getElementById('modal-error');
   err.style.display='none';
+  const esEdicion=!!equipoEditarId;
   try{
     if(modalTipo==='chofer'){
       const nombre=document.getElementById('f-nombre').value.trim();
-      const usuario=document.getElementById('f-usuario').value.trim().toLowerCase();
-      const pass=document.getElementById('f-pass').value;
-      if(!nombre||!usuario||!pass){err.textContent='Completá todos los campos';err.style.display='block';return;}
-      const email=usuario+'@pb-interno.com';
-      const cred=await createUserWithEmailAndPassword(auth,email,pass);
-      await set(ref(db,'usuarios/'+cred.user.uid),{email,rol:'chofer',nombre});
-      await set(ref(db,'choferes/'+cred.user.uid),{nombre,usuario,email});
-      cerrarModal();cargarChoferes();
+      if(!nombre){err.textContent='Ingresá el nombre';err.style.display='block';return;}
+      if(esEdicion){
+        await update(ref(db,'choferes/'+equipoEditarId),{nombre});
+        await update(ref(db,'usuarios/'+equipoEditarId),{nombre});
+        cerrarModal();cargarChoferes();
+      } else {
+        const usuario=document.getElementById('f-usuario').value.trim().toLowerCase();
+        const pass=document.getElementById('f-pass').value;
+        if(!usuario||!pass){err.textContent='Completá todos los campos';err.style.display='block';return;}
+        const email=usuario+'@pb-interno.com';
+        // Usar instancia secundaria para no cerrar sesión del admin
+        const cred=await createUserWithEmailAndPassword(authSecundario,email,pass);
+        await signOut(authSecundario);
+        await set(ref(db,'usuarios/'+cred.user.uid),{email,rol:'chofer',nombre});
+        await set(ref(db,'choferes/'+cred.user.uid),{nombre,usuario,email});
+        cerrarModal();cargarChoferes();
+      }
     } else if(modalTipo==='acompanante'){
       const nombre=document.getElementById('f-nombre').value.trim();
       if(!nombre){err.textContent='Ingresá el nombre';err.style.display='block';return;}
-      const r=push(ref(db,'acompanantes'));
-      await set(r,{nombre});
-      cerrarModal();cargarAcompanantes();
-    } else {
+      if(esEdicion){
+        await update(ref(db,'acompanantes/'+equipoEditarId),{nombre});
+        cerrarModal();cargarAcompanantes();
+      } else {
+        await set(push(ref(db,'acompanantes')),{nombre});
+        cerrarModal();cargarAcompanantes();
+      }
+    } else if(modalTipo==='camion'){
       const nombre=document.getElementById('f-nombre').value.trim();
       const patente=document.getElementById('f-patente').value.trim().toUpperCase();
       if(!nombre||!patente){err.textContent='Completá nombre y patente';err.style.display='block';return;}
-      const r=push(ref(db,'camiones'));
-      await set(r,{nombre,patente});
-      cerrarModal();cargarCamiones();
+      if(esEdicion){
+        await update(ref(db,'camiones/'+equipoEditarId),{nombre,patente});
+        cerrarModal();cargarCamiones();
+      } else {
+        await set(push(ref(db,'camiones')),{nombre,patente});
+        cerrarModal();cargarCamiones();
+      }
+    } else if(modalTipo==='oficina'){
+      const nombre=document.getElementById('f-nombre').value.trim();
+      if(!nombre){err.textContent='Ingresá el nombre';err.style.display='block';return;}
+      if(esEdicion){
+        await update(ref(db,'usuarios/'+equipoEditarId),{nombre});
+        cerrarModal();cargarOficina();
+      } else {
+        const email=document.getElementById('f-email').value.trim();
+        const pass=document.getElementById('f-pass').value;
+        if(!email||!pass){err.textContent='Completá email y contraseña';err.style.display='block';return;}
+        if(pass.length<6){err.textContent='La contraseña debe tener al menos 6 caracteres';err.style.display='block';return;}
+        const cred=await createUserWithEmailAndPassword(authSecundario,email,pass);
+        await signOut(authSecundario);
+        await set(ref(db,'usuarios/'+cred.user.uid),{email,rol:'oficina',nombre});
+        cerrarModal();cargarOficina();
+      }
     }
   }catch(e){
     err.textContent=e.code==='auth/email-already-in-use'?'Ese usuario ya existe':e.message;
@@ -1315,7 +1700,20 @@ window.editarViaje=async function(id,e){
   const v=snap.val();
   // Poblar selects
   await cargarEquipo();
-  document.getElementById('edit-zona').value=v.zona||'';
+  // Set zona selector
+  const zonaActual=v.zona||'';
+  const selZona=document.getElementById('edit-zona');
+  let zonaEncontrada=false;
+  for(const opt of selZona.options){
+    if(opt.value===zonaActual){selZona.value=zonaActual;zonaEncontrada=true;break;}
+  }
+  if(!zonaEncontrada&&zonaActual){
+    selZona.value='OTRA';
+    document.getElementById('edit-zona-custom').style.display='block';
+    document.getElementById('edit-zona-custom').value=zonaActual;
+  } else {
+    document.getElementById('edit-zona-custom').style.display='none';
+  }
   document.getElementById('edit-salida').value=v.horaSalida||'07:00';
   document.getElementById('edit-gps').value=v.gpsLink||'';
   if(v.choferId)document.getElementById('edit-chofer').value=v.choferId;
@@ -1330,7 +1728,7 @@ window.cerrarModalEditar=()=>document.getElementById('modal-editar').classList.r
 
 window.guardarEdicionViaje=async function(){
   if(!viajeEditarId)return;
-  const zona=document.getElementById('edit-zona').value.trim();
+  const zona=getEditZona();
   const horaSalida=document.getElementById('edit-salida').value;
   const gpsLinkEdit=document.getElementById('edit-gps').value.trim();
   const choferId=document.getElementById('edit-chofer').value;
@@ -1342,6 +1740,7 @@ window.guardarEdicionViaje=async function(){
   try{
     await update(ref(db,'viajes/'+viajeEditarId),{zona,horaSalida,gpsLink:gpsLinkEdit,choferId,choferNombre,camionNombre,acompNombre});
     if(choferId)await set(ref(db,'asignaciones/'+choferId),{viajeId:viajeEditarId});
+    logAudit('EDITAR_VIAJE',`ViajeId ${viajeEditarId} · Chofer: ${choferNombre} · ${zona}`);
     cerrarModalEditar();
     cargarViajes();
   }catch(e){alert('Error: '+e.message);}
@@ -1354,56 +1753,185 @@ window.showEquipo=function(tipo){
   document.getElementById('etab-'+tipo).classList.add('active');
 };
 
+// ── Parser HR local (sin API) ─────────────────────────────────────────────
+// Formato YAVU: bloques separados por líneas ")))))" entre clientes.
+// Cada bloque de entrega tiene: [CLIENTE REMITO ARTICULO DESC KG], Quien Recibe, ciudad.
+// Cobros/RETIRO son bloques de una sola línea sin "Quien Recibe".
+function parsearHojaDeRuta(txt,lineas){
+  // hrNumero — de "HOJA DE RUTA 00007591" o "* HOJA DE RUTA 00007591*"
+  const hrM=txt.match(/HOJA\s*DE\s*RUTA\s+(\d{5,10})/i)||txt.match(/N[°º]\s*(\d{5,10})/);
+  const hrNumero=hrM?hrM[1].padStart(8,'0'):'';
+
+  // zona — de "Zona: ZONA PIAMONTE Total:..."
+  const zonaM=txt.match(/Zona:\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:\s+Total:|\n|\r)/i);
+  const zona=zonaM?zonaM[1].trim():'';
+
+  // Dividir en bloques usando las líneas ")))))..." como separador.
+  // Esas líneas sólo tienen )+,.,+,-,espacio — al menos 8 chars.
+  const esDivisor=l=>/^[+.,)\-!\s]{8,}$/.test(l.trim());
+  // Bloques de cabecera a ignorar (aparecen en cada página)
+  const esHeader=/HOJA\s*DE\s*RUTA|Cliente\s+Remito|Cuenta\s*\(|Zona:|Fecha\s+\d|Obs\.|Notas|Firma|Aclaraci/i;
+
+  const bloques=[];
+  let cur=[];
+  for(const line of lineas){
+    if(esDivisor(line)){
+      if(cur.length>0){bloques.push([...cur]);cur=[];}
+    } else {
+      const t=line.trim();
+      if(t)cur.push(t);
+    }
+  }
+  if(cur.length>0)bloques.push(cur);
+
+  const cobrosPreexistentes=[];
+  const paradasMap={};   // clave = nombre cliente, para agrupar remitos
+
+  for(const bloque of bloques){
+    if(!bloque.length)continue;
+    const bStr=bloque.join(' ');
+    if(esHeader.test(bStr))continue;      // saltar cabeceras repetidas de página
+
+    const primera=bloque[0];
+    if(!primera||primera.length<4)continue;
+
+    // ── COBRO: línea con COBRAR $ o RETIRO DE PAGO (sin "Quien Recibe") ──
+    if(/COBRAR\s*\$|RETIRO\s*DE\s*PAGO/i.test(primera)){
+      // cliente: texto antes del primer número de 8 dígitos (nro de remito)
+      const cm=primera.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s&./]{1,42}?)\s+\d{8}/);
+      if(!cm)continue;
+      // monto: "COBRAR $ 687.117,06" o "COBRAR $ 65.100" o "($ 197200)"
+      const mm=primera.match(/COBRAR\s*\$\s*([\d.]+[.,]\d+)/i)
+              ||primera.match(/COBRAR\s*\$\s*([\d.]+)/i)
+              ||primera.match(/\(\s*\$\s*([\d.]+)\)/i);
+      const monto=mm?parseFloat(mm[1].replace(/\./g,'').replace(',','.')):0;
+      cobrosPreexistentes.push({cliente:cm[1].trim(),monto});
+      continue;
+    }
+
+    // ── PARADA: debe tener "Quien Recibe" en el bloque ───────────────────
+    const qrLine=bloque.find(l=>/Quien\s*Recibe/i.test(l));
+    if(!qrLine)continue;
+
+    // cliente: texto antes del nro de remito (8 dígitos) en la primera línea
+    // Ej: "ACOSTA JOSE RUBEN 00003041 441460 TORNILLO..."
+    const cm=primera.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s&./]{1,42}?)\s+\d{8}/);
+    if(!cm)continue;
+    const cliente=cm[1].trim();
+
+    // tel: dígitos de la línea "Quien Recibe" (ej: "3401 59-7570" → "3401597570")
+    const telRaw=qrLine.replace(/Quien\s*Recibe\s*:?\s*/i,'').replace(/[^0-9]/g,'');
+    const tel=telRaw.length>=7?telRaw:'';
+
+    // localidad: línea "[CP 4 dígitos] [ciudad] SANTA FE"
+    // Ej: "2529 Piamonte SANTA FE" → "Piamonte"
+    let localidad='';
+    for(const bl of bloque){
+      const lm=bl.match(/^\d{4}\s+([A-Za-záéíóúñÁÉÍÓÚÑ][A-Za-záéíóúñÁÉÍÓÚÑ\s]+?)\s+SANTA\s+FE/i)
+             ||bl.match(/^\d{4}\s+([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]{2,30}?)$/i);
+      if(lm){localidad=lm[1].trim();break;}
+    }
+
+    // kg: suma de "NNN,NNN KG" al final de cada línea del bloque
+    // Ej: "1,000 BAR 31,100 KG" → 31.1 kg
+    let kg=0;
+    for(const bl of bloque){
+      const km=bl.match(/(\d+[.,]\d+)\s+KG\s*$/i);
+      if(km)kg+=parseFloat(km[1].replace(',','.'));
+    }
+
+    // material: descripción del primer artículo (después del código numérico)
+    // "ACOSTA... 00003041 441460 TORNILLO C/A..." → "TORNILLO C/A..."
+    let material='';
+    const rp=primera.split(/\d{8}\s+/);
+    if(rp.length>1)material=rp[1].replace(/^\d+\s+/,'').substring(0,55).trim();
+
+    const vol=kg<50?'chico':kg<300?'mediano':'grande';
+
+    // Agrupar remitos del mismo cliente (un cliente puede tener varios bloques)
+    if(paradasMap[cliente]){
+      paradasMap[cliente].kg+=kg;
+      const tk=paradasMap[cliente].kg;
+      paradasMap[cliente].vol=tk<50?'chico':tk<300?'mediano':'grande';
+      if(!paradasMap[cliente].tel&&tel)paradasMap[cliente].tel=tel;
+      if(!paradasMap[cliente].localidad&&localidad)paradasMap[cliente].localidad=localidad;
+    } else {
+      paradasMap[cliente]={cliente,localidad,tel,material,kg,vol};
+    }
+  }
+
+  const paradas=Object.values(paradasMap);
+  console.log(`[HR] PB HR${hrNumero} ZONA:${zona} — ${paradas.length} paradas, ${cobrosPreexistentes.length} cobros`);
+  return{hrNumero,zona,cobrosPreexistentes,paradas};
+}
+
 // PDF
 window.onDragOver=e=>{e.preventDefault();document.getElementById('upload-zone').classList.add('dragover');};
 window.onDragLeave=()=>document.getElementById('upload-zone').classList.remove('dragover');
 window.onDrop=e=>{e.preventDefault();document.getElementById('upload-zone').classList.remove('dragover');const f=e.dataTransfer.files[0];if(f&&f.type==='application/pdf')procesarPDF(f);};
 
-async function procesarPDF(file){
+window.procesarPDF=async function procesarPDF(file){
   document.getElementById('upload-zone').style.display='none';
   const loading=document.getElementById('loading-bar');loading.style.display='block';
   document.getElementById('loading-msg').textContent='Leyendo el PDF...';
   try{
-    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=()=>rej();r.readAsDataURL(file);});
+    // Extraer texto del PDF con PDF.js (gratis, browser)
+    const arrayBuffer=await file.arrayBuffer();
+    const pdfjsLib=window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+
+    // Extracción por coordenada Y: reconstruye líneas reales del PDF (no todo junto)
+    const lineasHR=[];
+    for(let i=1;i<=pdf.numPages;i++){
+      const page=await pdf.getPage(i);
+      const content=await page.getTextContent();
+      const byY={};
+      for(const item of content.items){
+        if(!item.str.trim())continue;
+        const y=Math.round(item.transform[5]/2)*2; // agrupa ±2px como misma línea
+        if(!byY[y])byY[y]=[];
+        byY[y].push({x:item.transform[4],s:item.str});
+      }
+      // top → bottom, left → right
+      Object.keys(byY).map(Number).sort((a,b)=>b-a).forEach(y=>{
+        const ln=byY[y].sort((a,b)=>a.x-b.x).map(i=>i.s).join(' ').trim();
+        if(ln)lineasHR.push(ln);
+      });
+    }
+    const textoHR=lineasHR.join('\n');
+    console.log('[HR texto extraído]\n'+textoHR); // útil para debug si algo no parsea bien
+
     document.getElementById('loading-msg').textContent='Extrayendo paradas...';
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:2000,messages:[{role:'user',content:[
-        {type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}},
-        {type:'text',text:`Analizá esta Hoja de Ruta y respondé SOLO con JSON sin markdown con esta estructura:
-{
-  "empresa": "PB" o "E51" (detectá: si el título dice "HR Demo" o "HR DEMO" es "E51", si dice "HOJA DE RUTA" es "PB"),
-  "hrNumero": "00006997",
-  "zona": "ZONA RAFAELA",
-  "cobrosPreexistentes": [{"cliente":"NOMBRE","monto":369600.00}],
-  "paradas": [{"cliente":"...","localidad":"...","tel":"...","material":"...","kg":0,"vol":"chico|mediano|grande"}]
-}
-cobrosPreexistentes: extraé las posiciones que dicen "COBRAR $" o "RETIRO DE PAGO". 
-paradas: excluí los comprobantes de cobro/pago del listado de paradas. vol: "chico"<50kg, "mediano"50-300, "grande">300. Agrupá remitos del mismo cliente. tel sin espacios ni guiones.`}
-      ]}]})
-    });
-    const data=await resp.json();
-    const txt=data.content.map(c=>c.text||'').join('');
-    const parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());
+    const parsed=parsearHojaDeRuta(textoHR,lineasHR);
+    console.log('[HR parsed]',JSON.stringify(parsed,null,2));
     hrNumeroActual=parsed.hrNumero||'';
-    empresaActual=parsed.empresa||'PB';
     cobrosPreexistentes=parsed.cobrosPreexistentes||[];
-    if(parsed.zona)document.getElementById('inp-zona').value=parsed.zona;
-    // Mostrar empresa detectada
-    const empEl=document.getElementById('empresa-detectada');
-    if(empresaActual==='E51'){
-      empEl.style.display='block';
-      empEl.style.background='#F5F3FF';empEl.style.color='#7C3AED';empEl.style.border='1px solid #DDD6FE';
-      empEl.innerHTML='<i class="ti ti-building-warehouse"></i> Empresa interna E51 detectada — viaje se creará en solapa E51';
-    } else {
-      empEl.style.display='block';
-      empEl.style.background='#EFF6FF';empEl.style.color='#1D4ED8';empEl.style.border='1px solid #BFDBFE';
-      empEl.innerHTML='<i class="ti ti-truck-delivery"></i> Empresa PB detectada — viaje se creará en solapa Viajes';
+    if(parsed.zona){
+      // Try to match to predefined zones
+      const sel=document.getElementById('sel-zona');
+      const zonaUp=parsed.zona.toUpperCase();
+      let matched=false;
+      for(const opt of sel.options){
+        if(opt.value&&opt.value!=='OTRA'&&zonaUp.includes(opt.value.toUpperCase().replace(/\s*\(.*\)/,'').trim())){
+          sel.value=opt.value;
+          document.getElementById('inp-zona').value=opt.value;
+          document.getElementById('inp-zona').style.display='none';
+          matched=true;break;
+        }
+      }
+      if(!matched){
+        sel.value='OTRA';
+        document.getElementById('inp-zona').style.display='block';
+        document.getElementById('inp-zona').value=parsed.zona;
+      }
+      document.getElementById('zona-badge').style.display='block';
     }
     await verificarDuplicado(parsed.hrNumero, parsed.paradas);
   }catch(e){
     document.getElementById('loading-bar').style.display='none';
     document.getElementById('upload-zone').style.display='block';
-    document.getElementById('upload-zone').innerHTML=`<div style="color:#DC2626;font-size:13px;padding:1rem;text-align:center;">Error procesando PDF.<br>Usá el botón Demo para probar.</div>`;
+    document.getElementById('upload-zone').innerHTML=`<div style="padding:1.5rem;text-align:center;"><i class="ti ti-file-type-pdf" style="font-size:32px;color:#ccc;display:block;margin-bottom:8px;"></i><div style="color:#DC2626;font-size:13px;margin-bottom:10px;">Error procesando el PDF. Intentá de nuevo.</div><label style="cursor:pointer;font-size:12px;color:#1D4ED8;text-decoration:underline;">Seleccionar archivo<input type="file" id="file-input" accept=".pdf" style="display:none;" onchange="procesarPDF(this.files[0])"></label></div>`;
   }
 }
 
@@ -1412,6 +1940,9 @@ function cargarParadas(data){
   document.getElementById('loading-bar').style.display='none';
   document.getElementById('upload-zone').style.display='none';
   document.getElementById('logistica-area').style.display='block';
+  // Mostrar botón flotante de guardado
+  const btn=document.getElementById('btn-float-save');
+  if(btn){btn.style.display='flex';btn.className='pendiente';document.getElementById('float-save-txt').textContent='Cambios sin guardar';}
   // Si hay cobros preexistentes mostrar aviso
   if(cobrosPreexistentes.length>0){
     const avisoExistente=document.getElementById('cobros-preexistentes-aviso');
@@ -1426,32 +1957,153 @@ function cargarParadas(data){
   recalcular();
 }
 
-const DEMO_E51=[
-  {cliente:"AMBROSINO PABLO",localidad:"San Vicente",tel:"",material:"Ganchos tejido + tejido romboidal + planchuela galv.",kg:58.2,vol:"mediano"},
-  {cliente:"DENIS ALDO RAUL",localidad:"San Martín de las Escobas",tel:"3406505905",material:"Estructural L/F 40x80 + Cincalum chapa lisa",kg:136.4,vol:"grande"},
-];
-window.usarDemoHR=()=>{empresaActual='PB';cobrosPreexistentes=[];document.getElementById('empresa-detectada').style.display='none';cargarParadas(DEMO);};
-window.usarDemoE51=()=>{
-  empresaActual='E51';
-  cobrosPreexistentes=[{cliente:'AMBROSINO PABLO',monto:369600},{cliente:'DENIS ALDO RAUL',monto:412909}];
-  hrNumeroActual='00000336';
-  document.getElementById('inp-zona').value='ZONA SAN VICENTE';
-  const empEl=document.getElementById('empresa-detectada');
-  empEl.style.display='block';empEl.style.background='#F5F3FF';empEl.style.color='#7C3AED';empEl.style.border='1px solid #DDD6FE';
-  empEl.innerHTML='<i class="ti ti-building-warehouse"></i> Empresa interna E51 detectada — viaje se creará en solapa E51';
-  cargarParadas(DEMO_E51);
-};
+window.usarDemoHR=()=>{cobrosPreexistentes=[];cargarParadas(DEMO);};
+
+// ── BORRADOR ──────────────────────────────────────────
+function hayDatosNuevo(){
+  return paradas.length>0 || getZona() || document.getElementById('sel-chofer')?.value;
+}
+
+// ── Helpers WhatsApp + Save state ─────────────────────────────────────────
+function waNum(tel){
+  // Normaliza teléfono argentino a formato WhatsApp (549XXXXXXXXXX)
+  const t=String(tel||'').replace(/\D/g,'');
+  if(!t||t.length<7)return null;
+  if(t.startsWith('549'))return t;
+  if(t.startsWith('54'))return '549'+t.slice(2);
+  if(t.startsWith('0'))return '549'+t.slice(1);
+  return '549'+t;
+}
+function buildWspTxt(p,eta){
+  return `🚛 *Pedro Bravin S.A* — Tu pedido llega hoy.\n\n⏱ Hora estimada: *${eta} hs*\n_(puede variar según el recorrido)_\n\n📍 Seguí el camión en vivo:\n${gpsLink}\n\nConsultas: comunicarse con nosotros.`;
+}
+function marcarEditado(){
+  const btn=document.getElementById('btn-float-save');
+  if(!btn||document.getElementById('logistica-area')?.style.display==='none')return;
+  btn.style.display='flex';
+  btn.className='pendiente';
+  document.getElementById('float-save-txt').textContent='Cambios sin guardar';
+}
+function marcarGuardado(){
+  const btn=document.getElementById('btn-float-save');
+  if(!btn)return;
+  btn.className='guardado';
+  document.getElementById('float-save-txt').textContent='Guardado ✓';
+  setTimeout(()=>{btn.style.display='none';btn.className='';},2800);
+}
+
+function guardarBorrador(){
+  const borrador={
+    paradas, editOpen, gpsLink,
+    zona: getZona(),
+    choferId: document.getElementById('sel-chofer')?.value||'',
+    acompId: document.getElementById('sel-acompanante')?.value||'',
+    camionId: document.getElementById('sel-camion')?.value||'',
+    horaSalida: document.getElementById('hora-salida')?.value||'07:00',
+    tiempoZona: document.getElementById('tiempo-zona')?.value||'50',
+    hrNumero: hrNumeroActual,
+    cobros: cobrosPreexistentes
+  };
+  localStorage.setItem('pb_borrador',JSON.stringify(borrador));
+  _borradorActivo=true;
+  mostrarToast('Borrador guardado ✓','#065F46');
+  logAudit('GUARDAR_BORRADOR',`HR ${hrNumeroActual||'s/n'} · ${paradas.length} paradas`);
+  marcarGuardado();
+}
+
+function restaurarBorrador(){
+  try{
+    const b=JSON.parse(localStorage.getItem('pb_borrador')||'null');
+    if(!b||!b.paradas?.length)return false;
+    paradas=b.paradas;editOpen=b.editOpen||[];gpsLink=b.gpsLink||GPS_DEFAULT;
+    hrNumeroActual=b.hrNumero||'';cobrosPreexistentes=b.cobros||[];
+    if(b.zona){const sel=document.getElementById('sel-zona');let found=false;for(const o of sel.options){if(o.value===b.zona){sel.value=b.zona;found=true;break;}}if(!found){sel.value='OTRA';document.getElementById('inp-zona').value=b.zona;document.getElementById('inp-zona').style.display='block';}}
+    if(b.horaSalida)document.getElementById('hora-salida').value=b.horaSalida;
+    if(b.tiempoZona)document.getElementById('tiempo-zona').value=b.tiempoZona;
+    setTimeout(()=>{if(b.choferId)document.getElementById('sel-chofer').value=b.choferId;if(b.acompId)document.getElementById('sel-acompanante').value=b.acompId;if(b.camionId)document.getElementById('sel-camion').value=b.camionId;},500);
+    actualizarGPSUI();
+    document.getElementById('upload-zone').style.display='none';
+    document.getElementById('logistica-area').style.display='block';
+    recalcular();
+    _borradorActivo=true;
+    return true;
+  }catch(e){return false;}
+}
+
+function limpiarBorrador(){
+  localStorage.removeItem('pb_borrador');
+  _borradorActivo=false;
+  paradas=[];editOpen=[];hrNumeroActual='';cobrosPreexistentes=[];
+  gpsLink=GPS_DEFAULT;actualizarGPSUI();
+  document.getElementById('upload-zone').style.display='block';
+  document.getElementById('logistica-area').style.display='none';
+  document.getElementById('publicado-card').style.display='none';
+  document.getElementById('sel-zona').value='';
+  document.getElementById('inp-zona').value='';
+  document.getElementById('inp-zona').style.display='none';
+  document.getElementById('hora-salida').value='07:00';
+  document.getElementById('tiempo-zona').value='50';
+  document.getElementById('upload-zone').innerHTML=`<i class="ti ti-file-type-pdf" style="font-size:32px;color:#ccc;display:block;margin-bottom:8px;"></i><div style="font-size:14px;font-weight:600;margin-bottom:3px;">Subí el PDF de la Hoja de Ruta</div><div style="font-size:12px;color:#888;">Hacé clic o arrastrá aquí</div><input type="file" id="file-input" accept=".pdf" style="display:none;" onchange="procesarPDF(this.files[0])">`;
+}
+
+function mostrarToast(msg,color='#1a1a1a'){
+  let t=document.getElementById('toast-msg');
+  if(!t){t=document.createElement('div');t.id='toast-msg';t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;z-index:999;opacity:0;transition:opacity 0.3s;pointer-events:none;';document.body.appendChild(t);}
+  t.textContent=msg;t.style.background=color;t.style.opacity='1';
+  setTimeout(()=>t.style.opacity='0',2500);
+}
 
 window.showScreen=function(name){
+  // Interceptar si hay datos en nuevo y se va a otra solapa
+  if(name!=='nuevo'&&hayDatosNuevo()&&document.getElementById('screen-nuevo').classList.contains('active')){
+    document.getElementById('modal-borrador').classList.add('open');
+    document.getElementById('modal-borrador').dataset.destino=name;
+    return;
+  }
+  _navegarA(name);
+};
+
+window.borrador_guardarYcontinuar=function(){
+  guardarBorrador();
+  const dest=document.getElementById('modal-borrador').dataset.destino;
+  document.getElementById('modal-borrador').classList.remove('open');
+  _navegarA(dest);
+};
+window.borrador_descartarYcontinuar=function(){
+  limpiarBorrador();
+  const dest=document.getElementById('modal-borrador').dataset.destino;
+  document.getElementById('modal-borrador').classList.remove('open');
+  _navegarA(dest);
+};
+window.borrador_cancelar=function(){
+  document.getElementById('modal-borrador').classList.remove('open');
+};
+
+function _navegarA(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   document.getElementById('tab-'+name).classList.add('active');
-  if(name==='monitor')cargarMonitorSelect().then(()=>{ if(!monitorViajeId)cargarMonitor(); else { document.getElementById('sel-monitor').value=monitorViajeId; cargarMonitor(); }});
+  if(name==='monitor')cargarMonitorSelect().then(()=>{const id=_monitorId||monitorViajeId;if(id){document.getElementById('sel-monitor').value=id;cambiarMonitorViaje(id);}});
   if(name==='viajes')cargarViajes();
-  if(name==='e51')cargarE51();
+  if(name==='historial')cargarHistorial();
   if(name==='equipo')cargarEquipo();
-};
+  if(name==='nuevo'&&_borradorActivo){
+    // Ofrecer restaurar borrador
+    const b=JSON.parse(localStorage.getItem('pb_borrador')||'null');
+    if(b?.paradas?.length>0)document.getElementById('modal-restaurar').classList.add('open');
+  }
+}
+
+window.restaurar_si=function(){document.getElementById('modal-restaurar').classList.remove('open');restaurarBorrador();};
+window.restaurar_no=function(){document.getElementById('modal-restaurar').classList.remove('open');limpiarBorrador();};
 </script>
+
+<!-- Botón flotante de guardado -->
+<button id="btn-float-save" onclick="guardarBorrador()">
+  <i class="ti ti-device-floppy"></i>
+  <span id="float-save-txt">Guardar</span>
+</button>
+
 </body>
 </html>

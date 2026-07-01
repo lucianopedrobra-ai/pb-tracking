@@ -416,14 +416,14 @@ async function cargarViaje(uid){
         }
       }
     }
-    // Intento 2: fallback — buscar en viajes/ por choferId (cubre si asignaciones falló)
-    const q=query(ref(db,'viajes'),orderByChild('choferId'),equalTo(uid));
-    const snapQ=await get(q);
-    if(snapQ.exists()){
-      const entries=Object.entries(snapQ.val());
-      // Priorizar activo, luego completado más reciente
-      const activo=entries.find(([,v])=>v.estado==='activo');
-      const completo=entries.sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0)).find(([,v])=>v.estado==='completado');
+    // Intento 2: fallback client-side — descarga todos los viajes y filtra por choferId
+    // (no requiere índice en Firebase Rules)
+    const snapAll=await get(ref(db,'viajes'));
+    if(snapAll.exists()){
+      const entries=Object.entries(snapAll.val());
+      const activo=entries.find(([,v])=>v.choferId===uid&&v.estado==='activo');
+      const completo=entries.filter(([,v])=>v.choferId===uid&&v.estado==='completado')
+                            .sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0];
       const found=activo||completo;
       if(found){
         const [id,hr]=found;
@@ -436,13 +436,22 @@ async function cargarViaje(uid){
         return;
       }
     }
-    showSinViaje();
+    // Debug: mostrar uid en pantalla para diagnóstico
+    console.warn('Sin viaje para uid:',uid);
+    showSinViaje(uid);
   }catch(e){console.error('cargarViaje:',e);showSinViaje();}
 }
 
-function showSinViaje(){
+function showSinViaje(uid){
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('sin-viaje').style.display='block';
+  // Mostrar UID para diagnóstico en caso de mismatch
+  if(uid){
+    const d=document.createElement('div');
+    d.style.cssText='margin-top:16px;font-size:10px;color:#ccc;word-break:break-all;text-align:center;padding:0 20px;';
+    d.textContent='UID: '+uid;
+    document.getElementById('sin-viaje').appendChild(d);
+  }
 }
 
 function mostrarCerrado(){

@@ -1795,7 +1795,10 @@ function parsearHojaDeRuta(txt,lineas){
   if(cur.length>0)bloques.push(cur);
 
   const cobrosPreexistentes=[];
-  const paradasMap={};   // clave = nombre cliente, para agrupar remitos
+  const paradasMap={};   // clave = nombre cliente (o "CLIENTE (2)" si tiene 2 domicilios)
+  // Regex de nombre de cliente: admite dígitos para cubrir "COOP. AGROP. Y TAMB. 9" etc.
+  const reCliente=/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9\s&./]{1,42}?)\s+\d{8}/;
+  let ultimoCliente=null; // carry-forward para bloques que cortan en cambio de página
 
   for(const bloque of bloques){
     if(!bloque.length)continue;
@@ -1807,27 +1810,32 @@ function parsearHojaDeRuta(txt,lineas){
 
     // ── COBRO: línea con COBRAR $ o RETIRO DE PAGO (sin "Quien Recibe") ──
     if(/COBRAR\s*\$|RETIRO\s*DE\s*PAGO/i.test(primera)){
-      // cliente: texto antes del primer número de 8 dígitos (nro de remito)
-      const cm=primera.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s&./]{1,42}?)\s+\d{8}/);
+      const cm=primera.match(reCliente);
       if(!cm)continue;
-      // monto: "COBRAR $ 687.117,06" o "COBRAR $ 65.100" o "($ 197200)"
       const mm=primera.match(/COBRAR\s*\$\s*([\d.]+[.,]\d+)/i)
               ||primera.match(/COBRAR\s*\$\s*([\d.]+)/i)
               ||primera.match(/\(\s*\$\s*([\d.]+)\)/i);
       const monto=mm?parseFloat(mm[1].replace(/\./g,'').replace(',','.')):0;
       cobrosPreexistentes.push({cliente:cm[1].trim(),monto});
+      ultimoCliente=null;
       continue;
     }
 
-    // ── PARADA: debe tener "Quien Recibe" en el bloque ───────────────────
-    const qrLine=bloque.find(l=>/Quien\s*Recibe/i.test(l));
-    if(!qrLine)continue;
+    // ── DETECTAR nombre de cliente en primera línea ───────────────────────
+    const cm=primera.match(reCliente);
+    if(cm) ultimoCliente=cm[1].trim(); // actualizar carry-forward siempre que veamos un nombre
 
-    // cliente: texto antes del nro de remito (8 dígitos) en la primera línea
-    // Ej: "ACOSTA JOSE RUBEN 00003041 441460 TORNILLO..."
-    const cm=primera.match(/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s&./]{1,42}?)\s+\d{8}/);
-    if(!cm)continue;
-    const cliente=cm[1].trim();
+    // ── PARADA: necesita "Quien Recibe" en el bloque ─────────────────────
+    const qrLine=bloque.find(l=>/Quien\s*Recibe/i.test(l));
+    if(!qrLine){
+      // Bloque sin Quien Recibe = inicio de remito largo que sigue en pág siguiente.
+      // Ya actualizamos ultimoCliente arriba. Saltar.
+      continue;
+    }
+
+    // Usar nombre de cliente de este bloque o, si falta (continuación entre páginas), el anterior
+    const cliente=cm?cm[1].trim():ultimoCliente;
+    if(!cliente)continue;
 
     // tel: dígitos de la línea "Quien Recibe" (ej: "3401 59-7570" → "3401597570")
     const telRaw=qrLine.replace(/Quien\s*Recibe\s*:?\s*/i,'').replace(/[^0-9]/g,'');
@@ -1839,14 +1847,12 @@ function parsearHojaDeRuta(txt,lineas){
       const dm=bl.match(/Direcci[oó]n\s*de\s*Entrega\s*:?\s*(.+)/i);
       if(dm){
         const d=dm[1].trim();
-        // Ignorar "COORD/ANTES" (sin dirección específica) y "Dirección de la Cuenta"
         if(d&&!/COORD\/ANTES|Direcci[oó]n\s*de\s*la\s*Cuenta/i.test(d)&&d.length>3)direccion=d;
         break;
       }
     }
 
     // localidad: línea "[CP 4 dígitos] [ciudad] SANTA FE"
-    // Ej: "2529 Piamonte SANTA FE" → "Piamonte"
     let localidad='';
     for(const bl of bloque){
       const lm=bl.match(/^\d{4}\s+([A-Za-záéíóúñÁÉÍÓÚÑ][A-Za-záéíóúñÁÉÍÓÚÑ\s]+?)\s+SANTA\s+FE/i)
@@ -1855,31 +1861,41 @@ function parsearHojaDeRuta(txt,lineas){
     }
 
     // kg: suma de "NNN,NNN KG" al final de cada línea del bloque
-    // Ej: "1,000 BAR 31,100 KG" → 31.1 kg
     let kg=0;
     for(const bl of bloque){
       const km=bl.match(/(\d+[.,]\d+)\s+KG\s*$/i);
       if(km)kg+=parseFloat(km[1].replace(',','.'));
     }
 
-    // material: descripción del primer artículo (después del código numérico)
-    // "ACOSTA... 00003041 441460 TORNILLO C/A..." → "TORNILLO C/A..."
+    // material: descripción del primer artículo
     let material='';
     const rp=primera.split(/\d{8}\s+/);
     if(rp.length>1)material=rp[1].replace(/^\d+\s+/,'').substring(0,55).trim();
 
     const vol=kg<50?'chico':kg<300?'mediano':'grande';
 
-    // Agrupar remitos del mismo cliente (un cliente puede tener varios bloques)
-    if(paradasMap[cliente]){
-      paradasMap[cliente].kg+=kg;
-      const tk=paradasMap[cliente].kg;
-      paradasMap[cliente].vol=tk<50?'chico':tk<300?'mediano':'grande';
-      if(!paradasMap[cliente].tel&&tel)paradasMap[cliente].tel=tel;
-      if(!paradasMap[cliente].localidad&&localidad)paradasMap[cliente].localidad=localidad;
-      if(!paradasMap[cliente].direccion&&direccion)paradasMap[cliente].direccion=direccion;
+    // ── Determinar clave en paradasMap ────────────────────────────────────
+    // Si mismo cliente tiene DISTINTA dirección de entrega → parada separada "(2)", "(3)"...
+    let key=cliente;
+    if(paradasMap[key]&&direccion&&paradasMap[key].direccion){
+      const dirExist=paradasMap[key].direccion.replace(/^SA:\s*/i,'').trim().toUpperCase();
+      const dirNueva=direccion.replace(/^SA:\s*/i,'').trim().toUpperCase();
+      if(dirExist!==dirNueva){
+        let n=2;
+        while(paradasMap[cliente+' ('+n+')'])n++;
+        key=cliente+' ('+n+')';
+      }
+    }
+
+    if(paradasMap[key]){
+      paradasMap[key].kg+=kg;
+      const tk=paradasMap[key].kg;
+      paradasMap[key].vol=tk<50?'chico':tk<300?'mediano':'grande';
+      if(!paradasMap[key].tel&&tel)paradasMap[key].tel=tel;
+      if(!paradasMap[key].localidad&&localidad)paradasMap[key].localidad=localidad;
+      if(!paradasMap[key].direccion&&direccion)paradasMap[key].direccion=direccion;
     } else {
-      paradasMap[cliente]={cliente,localidad,tel,direccion,material,kg,vol};
+      paradasMap[key]={cliente,localidad,tel,direccion,material,kg,vol};
     }
   }
 

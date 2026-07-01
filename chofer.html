@@ -405,9 +405,18 @@ onAuthStateChanged(auth,async user=>{
 });
 
 // ── VIAJE ─────────────────────────────────────────────
+function _aplicarViaje(uid,id,hr){
+  viajeId=id;hrInfo=hr;paradas=hr.paradas||[];gpsLink=hr.gpsLink||'';
+  // Reparar asignaciones para acelerar la próxima carga
+  try{set(ref(db,'asignaciones/'+uid),{viajeId:id});}catch(_){}
+  document.getElementById('loading-screen').style.display='none';
+  if(hr.estado==='completado'){mostrarCerrado();}
+  else{render();renderCobros();renderRecepciones();}
+}
+
 async function cargarViaje(uid){
   try{
-    // Intento 1: via asignaciones directa (fast path)
+    // Intento 1: asignaciones/{uid} → viajeId (fast path)
     let asigViajeId=null;
     const asig=await get(ref(db,'asignaciones/'+uid));
     if(asig.exists()){
@@ -415,68 +424,56 @@ async function cargarViaje(uid){
       const snap=await get(ref(db,'viajes/'+asigViajeId));
       if(snap.exists()){
         const hr=snap.val();
-        if(hr.estado==='completado'){
-          viajeId=asigViajeId;hrInfo=hr;
-          document.getElementById('loading-screen').style.display='none';
-          mostrarCerrado();return;
-        }
-        if(hr.estado==='activo'||hr.estado){
-          viajeId=asigViajeId;hrInfo=hr;paradas=hr.paradas||[];gpsLink=hr.gpsLink||'';
-          document.getElementById('loading-screen').style.display='none';
-          render();renderCobros();renderRecepciones();return;
-        }
+        if(hr.estado==='activo'||hr.estado==='completado'){_aplicarViaje(uid,asigViajeId,hr);return;}
       }
     }
-    // Intento 2: fallback client-side — descarga todos los viajes y filtra por choferId
+
+    // Cargar todos los viajes una sola vez para los intentos 2-4
     const snapAll=await get(ref(db,'viajes'));
     let debugViajes=[];
     if(snapAll.exists()){
       const entries=Object.entries(snapAll.val());
       debugViajes=entries.slice(-5).map(([id,v])=>({id,choferId:v.choferId||'(vacío)',estado:v.estado||'?',nombre:v.choferNombre||''}));
-      const activo=entries.find(([,v])=>v.choferId===uid&&v.estado==='activo');
-      const completo=entries.filter(([,v])=>v.choferId===uid&&v.estado==='completado')
-                            .sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0];
-      const found=activo||completo;
-      if(found){
-        const [id,hr]=found;
-        viajeId=id;hrInfo=hr;paradas=hr.paradas||[];gpsLink=hr.gpsLink||'';
-        try{await set(ref(db,'asignaciones/'+uid),{viajeId:id});}catch(_){}
-        document.getElementById('loading-screen').style.display='none';
-        if(hr.estado==='completado'){mostrarCerrado();}
-        else{render();renderCobros();renderRecepciones();}
-        return;
-      }
-      // Intento 3: fallback por choferNombre — cuando choferId en viaje != auth uid
-      // (caso: entrada en choferes/ creada con key distinto al uid de Auth)
+
+      // Intento 2: choferId === uid (coincidencia directa)
+      const found2=(entries.find(([,v])=>v.choferId===uid&&v.estado==='activo')
+                 || entries.filter(([,v])=>v.choferId===uid&&v.estado==='completado').sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0]);
+      if(found2){_aplicarViaje(uid,found2[0],found2[1]);return;}
+
+      // Intento 3: por usuario/email — choferes/{viaje.choferId}.usuario === prefijo email del auth
+      // Cubre el caso donde la entrada en choferes/ fue creada con una key distinta al auth uid
       const user=auth.currentUser;
-      if(user){
-        // Obtener nombre desde usuarios/{uid} o de choferes buscando por email
+      if(user?.email){
+        const emailPrefix=user.email.split('@')[0].toLowerCase();
+        const viajesToTry=entries.filter(([,v])=>v.estado==='activo'||v.estado==='completado');
+        for(const [id,hr] of viajesToTry){
+          if(!hr.choferId)continue;
+          try{
+            const snapC=await get(ref(db,'choferes/'+hr.choferId));
+            if(snapC.exists()){
+              const c=snapC.val();
+              const matchEmail=c.email&&c.email.toLowerCase()===user.email.toLowerCase();
+              const matchUsuario=c.usuario&&c.usuario.toLowerCase()===emailPrefix;
+              if(matchEmail||matchUsuario){_aplicarViaje(uid,id,hr);return;}
+            }
+          }catch(_){}
+        }
+
+        // Intento 4: por nombre — leer nombre desde usuarios/{uid} o choferes/{uid}
         let miNombre=null;
-        try{
-          const snapUsr=await get(ref(db,'usuarios/'+uid));
-          if(snapUsr.exists()&&snapUsr.val().nombre) miNombre=snapUsr.val().nombre;
-        }catch(_){}
-        if(!miNombre&&user.displayName) miNombre=user.displayName;
+        try{const sn=await get(ref(db,'usuarios/'+uid));if(sn.exists()&&sn.val().nombre)miNombre=sn.val().nombre;}catch(_){}
+        if(!miNombre){try{const sn=await get(ref(db,'choferes/'+uid));if(sn.exists()&&sn.val().nombre)miNombre=sn.val().nombre;}catch(_){};}
+        if(!miNombre&&user.displayName)miNombre=user.displayName;
         if(miNombre){
           const norm=s=>s.toLowerCase().trim();
-          const activoNombre=entries.find(([,v])=>v.choferNombre&&norm(v.choferNombre)===norm(miNombre)&&v.estado==='activo');
-          const completoNombre=entries.filter(([,v])=>v.choferNombre&&norm(v.choferNombre)===norm(miNombre)&&v.estado==='completado')
-                                      .sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0];
-          const foundNombre=activoNombre||completoNombre;
-          if(foundNombre){
-            const [id,hr]=foundNombre;
-            viajeId=id;hrInfo=hr;paradas=hr.paradas||[];gpsLink=hr.gpsLink||'';
-            // Reparar asignaciones para la próxima vez (usando auth uid)
-            try{await set(ref(db,'asignaciones/'+uid),{viajeId:id});}catch(_){}
-            document.getElementById('loading-screen').style.display='none';
-            if(hr.estado==='completado'){mostrarCerrado();}
-            else{render();renderCobros();renderRecepciones();}
-            return;
-          }
+          const found4=(entries.find(([,v])=>v.choferNombre&&norm(v.choferNombre)===norm(miNombre)&&v.estado==='activo')
+                     || entries.filter(([,v])=>v.choferNombre&&norm(v.choferNombre)===norm(miNombre)&&v.estado==='completado').sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0]);
+          if(found4){_aplicarViaje(uid,found4[0],found4[1]);return;}
         }
       }
     }
-    console.warn('Sin viaje para uid:',uid,'asignaciones apunta a:',asigViajeId,'viajes encontrados:',debugViajes);
+
+    console.warn('Sin viaje para uid:',uid,'asig:',asigViajeId);
     showSinViaje(uid, asigViajeId, debugViajes);
   }catch(e){console.error('cargarViaje error:',e);showSinViaje(null,null,[],e.message);}
 }

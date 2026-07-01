@@ -1552,20 +1552,44 @@ window.eliminarOficina=async function(id,nombre){
 };
 
 async function cargarChoferes(){
-  const snap=await get(ref(db,'choferes'));
+  // Cargar choferes y usuarios en paralelo para deduplicar
+  const [snap,snapUs]=await Promise.all([get(ref(db,'choferes')),get(ref(db,'usuarios'))]);
   const sel=document.getElementById('sel-chofer');
   const selE=document.getElementById('edit-chofer');
   sel.innerHTML='<option value="">Sin asignar</option>';
   if(selE)selE.innerHTML='<option value="">Sin asignar</option>';
   const cont=document.getElementById('lista-choferes');
   if(!snap.exists()){cont.innerHTML='<div style="text-align:center;padding:1.5rem;color:#aaa;font-size:13px;">No hay choferes</div>';return;}
-  cont.innerHTML='';
+
+  // IDs que tienen entrada en usuarios/ (= cuentas reales de Firebase Auth)
+  const linkedIds=new Set(snapUs.exists()?Object.keys(snapUs.val()):[]);
+
+  // Deduplicar: si hay dos entradas con el mismo nombre, preferir la que tiene cuenta Auth
+  const byName={};
   Object.entries(snap.val()).forEach(([id,c])=>{
-    [sel,selE].forEach(s=>{if(!s)return;const o=document.createElement('option');o.value=id;o.textContent=c.nombre;s.appendChild(o);});
-    const ini=c.nombre.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+    const key=(c.nombre||'').toLowerCase().trim();
+    if(!byName[key]){byName[key]={id,c};return;}
+    // Ya existe una entrada con este nombre — quedarnos con la que está en usuarios/
+    const prevLinked=linkedIds.has(byName[key].id);
+    const thisLinked=linkedIds.has(id);
+    if(thisLinked&&!prevLinked) byName[key]={id,c};
+  });
+
+  cont.innerHTML='';
+  Object.values(byName).forEach(({id,c})=>{
+    const linked=linkedIds.has(id);
+    [sel,selE].forEach(s=>{
+      if(!s)return;
+      const o=document.createElement('option');
+      o.value=id;
+      o.textContent=c.nombre+(linked?'':' ⚠');
+      s.appendChild(o);
+    });
+    const ini=(c.nombre||'?').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
     const div=document.createElement('div');div.className='equipo-item';
-    const adminBtns=esAdminEquipo()?`<div style="display:flex;gap:5px;"><button onclick="abrirModal('chofer','${id}',${JSON.stringify({nombre:c.nombre,usuario:c.usuario})})" style="font-size:11px;color:#1D4ED8;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-pencil"></i></button><button onclick="eliminarChofer('${id}','${c.nombre}')" style="font-size:11px;color:#DC2626;background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i></button></div>`:'';
-    div.innerHTML=`<div class="equipo-avatar">${ini}</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${c.nombre}</div><div style="font-size:11px;color:#888;">Usuario: ${c.usuario}</div></div>${adminBtns}`;
+    const warnBadge=linked?'':'<span style="font-size:10px;background:#FEF3C7;color:#92400E;border-radius:4px;padding:1px 5px;margin-left:4px;">sin usuario</span>';
+    const adminBtns=esAdminEquipo()?`<div style="display:flex;gap:5px;"><button onclick="abrirModal('chofer','${id}',${JSON.stringify({nombre:c.nombre,usuario:c.usuario||''})})" style="font-size:11px;color:#1D4ED8;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-pencil"></i></button><button onclick="eliminarChofer('${id}','${c.nombre}')" style="font-size:11px;color:#DC2626;background:#FEE2E2;border:1px solid #FECACA;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit;"><i class="ti ti-trash"></i></button></div>`:'';
+    div.innerHTML=`<div class="equipo-avatar">${ini}</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">${c.nombre}${warnBadge}</div><div style="font-size:11px;color:#888;">${c.usuario?'Usuario: '+c.usuario:'(entrada manual)'}</div></div>${adminBtns}`;
     cont.appendChild(div);
   });
 }
@@ -2056,7 +2080,8 @@ window.usarDemoHR=()=>{cobrosPreexistentes=[];cargarParadas(DEMO);};
 
 // ── BORRADOR ──────────────────────────────────────────
 function hayDatosNuevo(){
-  return paradas.length>0 || getZona() || document.getElementById('sel-chofer')?.value;
+  // Solo advertir si se cargaron paradas (PDF procesado) — seleccionar zona/chofer solo no cuenta
+  return paradas.length>0;
 }
 
 // ── Helpers WhatsApp + Save state ─────────────────────────────────────────

@@ -1796,6 +1796,7 @@ function parsearHojaDeRuta(txt,lineas){
 
   const cobrosPreexistentes=[];
   const paradasMap={};   // clave = nombre cliente (o "CLIENTE (2)" si tiene 2 domicilios)
+  const pendingKg={};    // kg de bloques sin Quien Recibe (remito multi-página), se suma al hallar el Quien Recibe
   // Regex de nombre de cliente: admite dígitos para cubrir "COOP. AGROP. Y TAMB. 9" etc.
   const reCliente=/^([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ0-9\s&./]{1,42}?)\s+\d{8}/;
   let ultimoCliente=null; // carry-forward para bloques que cortan en cambio de página
@@ -1825,11 +1826,20 @@ function parsearHojaDeRuta(txt,lineas){
     const cm=primera.match(reCliente);
     if(cm) ultimoCliente=cm[1].trim(); // actualizar carry-forward siempre que veamos un nombre
 
+    // Extraer kg del bloque SIEMPRE (antes de decidir si saltarlo),
+    // para no perder los kg de remitos que continúan en la página siguiente.
+    let kgBloque=0;
+    for(const bl of bloque){
+      const km=bl.match(/([\d.]+,\d+|\d+)\s+KG\s*$/i);
+      if(km){const raw=km[1].replace(/\./g,'').replace(',','.');kgBloque+=parseFloat(raw)||0;}
+    }
+
     // ── PARADA: necesita "Quien Recibe" en el bloque ─────────────────────
     const qrLine=bloque.find(l=>/Quien\s*Recibe/i.test(l));
     if(!qrLine){
-      // Bloque sin Quien Recibe = inicio de remito largo que sigue en pág siguiente.
-      // Ya actualizamos ultimoCliente arriba. Saltar.
+      // Bloque sin Quien Recibe = inicio de remito largo que continúa en pág siguiente.
+      // Guardamos el kg para sumarlo cuando encontremos el Quien Recibe.
+      if(ultimoCliente&&kgBloque>0) pendingKg[ultimoCliente]=(pendingKg[ultimoCliente]||0)+kgBloque;
       continue;
     }
 
@@ -1860,13 +1870,9 @@ function parsearHojaDeRuta(txt,lineas){
       if(lm){localidad=lm[1].trim();break;}
     }
 
-    // kg: suma de KG al final de línea — soporta enteros (500 KG), decimales (234,56 KG)
-    // y miles con punto (1.234,56 KG → elimina "." como sep de miles antes de parsear)
-    let kg=0;
-    for(const bl of bloque){
-      const km=bl.match(/([\d.]+,\d+|\d+)\s+KG\s*$/i);
-      if(km){const raw=km[1].replace(/\./g,'').replace(',','.');kg+=parseFloat(raw)||0;}
-    }
+    // kg: este bloque + kg pendiente de página anterior (remito multi-página)
+    let kg=kgBloque+(pendingKg[cliente]||0);
+    delete pendingKg[cliente]; // consumir el pendiente
 
     // material: descripción del primer artículo
     let material='';

@@ -6,6 +6,8 @@
 <title>Pedro Bravin — Oficina</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh;}
@@ -302,6 +304,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <button class="btn btn-green" onclick="publicarViaje()"><i class="ti ti-cloud-upload"></i> Publicar viaje</button>
         <button class="btn" onclick="guardarBorrador()"><i class="ti ti-device-floppy"></i> Guardar borrador</button>
         <button class="btn" onclick="recalcular()"><i class="ti ti-refresh"></i> Recalcular</button>
+        <button class="btn" onclick="toggleMapa()" id="btn-mapa"><i class="ti ti-map"></i> Ver mapa</button>
+      </div>
+      <div id="mapa-container" style="display:none;margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;">
+        <div style="padding:8px 12px;background:#f9fafb;border-bottom:1px solid #e5e7eb;font-size:12px;color:#555;display:flex;align-items:center;gap:6px;">
+          <i class="ti ti-map-pin"></i> Paradas geocodificadas · <span id="mapa-status">Iniciando...</span>
+        </div>
+        <div id="mapa-leaflet" style="height:360px;"></div>
       </div>
 
       <!-- Publicado -->
@@ -777,7 +786,7 @@ function renderParadasLogistica(etas){
       <div class="row">
         <span class="drag-handle"><i class="ti ti-grip-vertical"></i></span>
         <div class="pos-num">${i+1}</div>
-        <div style="flex:1;min-width:0;"><div class="client-name">${p.cliente}</div><div class="client-detail">${p.kg>0?p.kg.toLocaleString('es-AR')+' kg · ':''}${p.material}</div></div>
+        <div style="flex:1;min-width:0;"><div class="client-name">${p.cliente}</div><div class="client-detail">${p.kg>0?p.kg.toLocaleString('es-AR')+' kg · ':''}${p.material}</div>${p.direccion?`<div class="client-detail" style="color:#555;font-size:11px;"><i class="ti ti-map-pin-2"></i> ${p.direccion}</div>`:''}</div>
         <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
           <select class="sel" style="font-size:11px;" onchange="cambiarVol(${i},this.value)">
             <option value="chico" ${p.vol==='chico'?'selected':''}>15'</option>
@@ -802,6 +811,7 @@ function renderParadasLogistica(etas){
           </div>
         </div>
         <div><div class="lbl">Material</div><input class="inp-full" style="font-size:12px;" value="${p.material}" onchange="editarCampo(${i},'material',this.value)"></div>
+        <div style="margin-top:6px;"><div class="lbl">Dirección de entrega</div><input class="inp-full" style="font-size:12px;" value="${p.direccion||''}" onchange="editarCampo(${i},'direccion',this.value)" placeholder="Calle, número..."></div>
       </div>`;
     div.addEventListener('dragstart',e=>{dragSrc=i;div.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
     div.addEventListener('dragend',()=>{div.classList.remove('dragging');document.querySelectorAll('.card').forEach(c=>c.classList.remove('drop-target'));});
@@ -1823,6 +1833,18 @@ function parsearHojaDeRuta(txt,lineas){
     const telRaw=qrLine.replace(/Quien\s*Recibe\s*:?\s*/i,'').replace(/[^0-9]/g,'');
     const tel=telRaw.length>=7?telRaw:'';
 
+    // direccion: "Dirección de Entrega: CALLE NRO" (puede ser vacía o "COORD/ANTES")
+    let direccion='';
+    for(const bl of bloque){
+      const dm=bl.match(/Direcci[oó]n\s*de\s*Entrega\s*:?\s*(.+)/i);
+      if(dm){
+        const d=dm[1].trim();
+        // Ignorar "COORD/ANTES" (sin dirección específica) y "Dirección de la Cuenta"
+        if(d&&!/COORD\/ANTES|Direcci[oó]n\s*de\s*la\s*Cuenta/i.test(d)&&d.length>3)direccion=d;
+        break;
+      }
+    }
+
     // localidad: línea "[CP 4 dígitos] [ciudad] SANTA FE"
     // Ej: "2529 Piamonte SANTA FE" → "Piamonte"
     let localidad='';
@@ -1855,8 +1877,9 @@ function parsearHojaDeRuta(txt,lineas){
       paradasMap[cliente].vol=tk<50?'chico':tk<300?'mediano':'grande';
       if(!paradasMap[cliente].tel&&tel)paradasMap[cliente].tel=tel;
       if(!paradasMap[cliente].localidad&&localidad)paradasMap[cliente].localidad=localidad;
+      if(!paradasMap[cliente].direccion&&direccion)paradasMap[cliente].direccion=direccion;
     } else {
-      paradasMap[cliente]={cliente,localidad,tel,material,kg,vol};
+      paradasMap[cliente]={cliente,localidad,tel,direccion,material,kg,vol};
     }
   }
 
@@ -2097,6 +2120,87 @@ function _navegarA(name){
 
 window.restaurar_si=function(){document.getElementById('modal-restaurar').classList.remove('open');restaurarBorrador();};
 window.restaurar_no=function(){document.getElementById('modal-restaurar').classList.remove('open');limpiarBorrador();};
+
+// ── MAPA LEAFLET + NOMINATIM ────────────────────────────────────────────────
+let _mapaInst=null;
+let _mapaVisible=false;
+
+window.toggleMapa=async function(){
+  const cont=document.getElementById('mapa-container');
+  _mapaVisible=!_mapaVisible;
+  cont.style.display=_mapaVisible?'block':'none';
+  document.getElementById('btn-mapa').innerHTML=_mapaVisible
+    ?'<i class="ti ti-map-off"></i> Ocultar mapa'
+    :'<i class="ti ti-map"></i> Ver mapa';
+  if(_mapaVisible)await renderizarMapa();
+};
+
+async function geocodificar(q){
+  // Nominatim (OpenStreetMap) — gratis, sin API key
+  const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q+', Santa Fe, Argentina')}&format=json&limit=1&accept-language=es`;
+  try{
+    const r=await fetch(url,{headers:{'User-Agent':'PBTracking/1.0 lucianopedrobra@gmail.com'}});
+    const data=await r.json();
+    if(data&&data[0])return{lat:parseFloat(data[0].lat),lon:parseFloat(data[0].lon),label:data[0].display_name};
+  }catch(e){}
+  return null;
+}
+
+async function renderizarMapa(){
+  if(!paradas.length)return;
+  const statusEl=document.getElementById('mapa-status');
+
+  // Inicializar o resetear mapa
+  if(_mapaInst){_mapaInst.remove();_mapaInst=null;}
+  _mapaInst=L.map('mapa-leaflet');
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© <a href="https://www.openstreetmap.org">OpenStreetMap</a>',maxZoom:18
+  }).addTo(_mapaInst);
+
+  const coords=[];
+  const iconos={};
+
+  for(let i=0;i<paradas.length;i++){
+    const p=paradas[i];
+    statusEl.textContent=`Geocodificando ${i+1}/${paradas.length}: ${p.cliente}...`;
+
+    // Buscar por dirección completa si existe, sino por localidad
+    let geo=null;
+    if(p.direccion){
+      geo=await geocodificar(`${p.direccion}, ${p.localidad}`);
+    }
+    if(!geo&&p.localidad){
+      geo=await geocodificar(p.localidad);
+    }
+    if(!geo)continue;
+
+    coords.push([geo.lat,geo.lon]);
+
+    // Ícono numerado personalizado
+    const color=p.vol==='grande'?'#DC2626':p.vol==='mediano'?'#D97706':'#059669';
+    const icon=L.divIcon({
+      className:'',
+      html:`<div style="width:28px;height:28px;border-radius:50%;background:${color};color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${i+1}</div>`,
+      iconSize:[28,28],iconAnchor:[14,14]
+    });
+    const etas=calcETAs();
+    L.marker([geo.lat,geo.lon],{icon})
+      .bindPopup(`<b>${i+1}. ${p.cliente}</b><br>${p.direccion||p.localidad}<br>🕐 ETA: ${etas[i]}<br>${p.kg>0?p.kg.toLocaleString('es-AR')+' kg':''}${p.tel?`<br>📞 ${p.tel}`:''}`)
+      .addTo(_mapaInst);
+
+    // Respetar rate limit de Nominatim (1 req/seg)
+    await new Promise(r=>setTimeout(r,1100));
+  }
+
+  if(coords.length>0){
+    // Dibujar línea de ruta en orden
+    L.polyline(coords,{color:'#1D4ED8',weight:2.5,opacity:0.7,dashArray:'6,4'}).addTo(_mapaInst);
+    _mapaInst.fitBounds(coords,{padding:[24,24]});
+    statusEl.textContent=`${coords.length} parada${coords.length>1?'s':''} en el mapa`;
+  } else {
+    statusEl.textContent='No se pudo geocodificar ninguna parada';
+  }
+}
 </script>
 
 <!-- Botón flotante de guardado -->

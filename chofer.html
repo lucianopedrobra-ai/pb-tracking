@@ -398,29 +398,32 @@ onAuthStateChanged(auth,async user=>{
 async function cargarViaje(uid){
   try{
     // Intento 1: via asignaciones directa (fast path)
+    let asigViajeId=null;
     const asig=await get(ref(db,'asignaciones/'+uid));
     if(asig.exists()){
-      const id=asig.val().viajeId;
-      const snap=await get(ref(db,'viajes/'+id));
+      asigViajeId=asig.val().viajeId;
+      const snap=await get(ref(db,'viajes/'+asigViajeId));
       if(snap.exists()){
         const hr=snap.val();
         if(hr.estado==='completado'){
-          viajeId=id;hrInfo=hr;
+          viajeId=asigViajeId;hrInfo=hr;
           document.getElementById('loading-screen').style.display='none';
           mostrarCerrado();return;
         }
         if(hr.estado==='activo'||hr.estado){
-          viajeId=id;hrInfo=hr;paradas=hr.paradas||[];gpsLink=hr.gpsLink||'';
+          viajeId=asigViajeId;hrInfo=hr;paradas=hr.paradas||[];gpsLink=hr.gpsLink||'';
           document.getElementById('loading-screen').style.display='none';
           render();renderCobros();renderRecepciones();return;
         }
       }
     }
     // Intento 2: fallback client-side — descarga todos los viajes y filtra por choferId
-    // (no requiere índice en Firebase Rules)
     const snapAll=await get(ref(db,'viajes'));
+    let debugViajes=[];
     if(snapAll.exists()){
       const entries=Object.entries(snapAll.val());
+      // Guardar info diagnóstico (los últimos 5 viajes con su choferId)
+      debugViajes=entries.slice(-5).map(([id,v])=>({id,choferId:v.choferId||'(vacío)',estado:v.estado||'?',nombre:v.choferNombre||''}));
       const activo=entries.find(([,v])=>v.choferId===uid&&v.estado==='activo');
       const completo=entries.filter(([,v])=>v.choferId===uid&&v.estado==='completado')
                             .sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0];
@@ -428,7 +431,6 @@ async function cargarViaje(uid){
       if(found){
         const [id,hr]=found;
         viajeId=id;hrInfo=hr;paradas=hr.paradas||[];gpsLink=hr.gpsLink||'';
-        // Reparar asignaciones para la próxima vez
         try{await set(ref(db,'asignaciones/'+uid),{viajeId:id});}catch(_){}
         document.getElementById('loading-screen').style.display='none';
         if(hr.estado==='completado'){mostrarCerrado();}
@@ -436,22 +438,38 @@ async function cargarViaje(uid){
         return;
       }
     }
-    // Debug: mostrar uid en pantalla para diagnóstico
-    console.warn('Sin viaje para uid:',uid);
-    showSinViaje(uid);
-  }catch(e){console.error('cargarViaje:',e);showSinViaje();}
+    console.warn('Sin viaje para uid:',uid,'asignaciones apunta a:',asigViajeId,'viajes encontrados:',debugViajes);
+    showSinViaje(uid, asigViajeId, debugViajes);
+  }catch(e){console.error('cargarViaje error:',e);showSinViaje(null,null,[],e.message);}
 }
 
-function showSinViaje(uid){
+function showSinViaje(uid, asigViajeId, debugViajes, errMsg){
   document.getElementById('loading-screen').style.display='none';
   document.getElementById('sin-viaje').style.display='block';
-  // Mostrar UID para diagnóstico en caso de mismatch
-  if(uid){
-    const d=document.createElement('div');
-    d.style.cssText='margin-top:16px;font-size:10px;color:#ccc;word-break:break-all;text-align:center;padding:0 20px;';
-    d.textContent='UID: '+uid;
-    document.getElementById('sin-viaje').appendChild(d);
+  const wrap=document.getElementById('sin-viaje');
+  // Limpiar previos diagnósticos
+  wrap.querySelectorAll('._diag').forEach(el=>el.remove());
+
+  const diag=document.createElement('div');
+  diag.className='_diag';
+  diag.style.cssText='margin-top:20px;font-size:10px;color:#999;word-break:break-all;text-align:left;padding:10px 16px;background:#f5f5f5;border-radius:10px;line-height:1.7;';
+
+  let html='<b style="color:#555">Diagnóstico</b><br>';
+  if(errMsg) html+=`<span style="color:#c00">Error: ${errMsg}</span><br>`;
+  if(uid) html+=`<b>Tu UID:</b> ${uid}<br>`;
+  if(asigViajeId) html+=`<b>asignaciones→viajeId:</b> ${asigViajeId}<br>`;
+  else html+=`<b>asignaciones:</b> no existe<br>`;
+  if(debugViajes&&debugViajes.length){
+    html+='<br><b>Últimos viajes en Firebase:</b><br>';
+    debugViajes.forEach(v=>{
+      const match=v.choferId===uid?'✅':'❌';
+      html+=`${match} [${v.estado}] ${v.nombre}<br><span style="color:#aaa;font-size:9px;">${v.choferId}</span><br>`;
+    });
+  } else {
+    html+='<b>viajes/:</b> vacío o sin acceso<br>';
   }
+  diag.innerHTML=html;
+  wrap.appendChild(diag);
 }
 
 function mostrarCerrado(){

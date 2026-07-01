@@ -914,23 +914,65 @@ function renderWSPMasivo(etas){
   if(count===0)cont.innerHTML='<div style="font-size:12px;color:#888;">Agregá teléfonos a las paradas para enviar avisos.</div>';
 }
 
-// ENVIAR TODOS - abre WhatsApp uno por uno
+// ENVIAR TODOS — modal secuencial sin confirm() dialogs
 let wspIdx=0;
+
 window.enviarTodos=function(){
   wspIdx=0;
-  abrirSiguienteWSP();
+  if(!wspItems.length){mostrarToast('⚠️ Ninguna parada tiene teléfono','#DC2626');return;}
+  _mostrarModalWSP();
 };
-function abrirSiguienteWSP(){
-  if(wspIdx>=wspItems.length)return;
+
+function _mostrarModalWSP(){
+  const old=document.getElementById('_modal-wsp');
+  if(old)old.remove();
+  if(wspIdx>=wspItems.length){mostrarToast('✅ Avisos enviados a todos','#059669');return;}
+
   const item=wspItems[wspIdx];
-  window.open('https://wa.me/'+item.tel+'?text='+encodeURIComponent(item.txt),'_blank');
-  wspIdx++;
-  if(wspIdx<wspItems.length){
-    setTimeout(()=>{
-      if(confirm(`Enviado a ${item.cliente}.\n¿Continuar con el siguiente (${wspIdx+1}/${wspItems.length})?`))abrirSiguienteWSP();
-    },800);
-  }
+  const pct=Math.round((wspIdx/wspItems.length)*100);
+  const waUrl='https://wa.me/'+item.tel+'?text='+encodeURIComponent(item.txt);
+
+  const ov=document.createElement('div');
+  ov.id='_modal-wsp';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;';
+  ov.innerHTML=`
+    <div style="background:#fff;border-radius:16px;padding:22px;max-width:420px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.35);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:11px;font-weight:700;color:#25D366;letter-spacing:.6px;">📤 AVISOS DE LLEGADA</div>
+        <div style="font-size:11px;color:#888;font-weight:600;">${wspIdx+1} / ${wspItems.length}</div>
+      </div>
+      <div style="background:#e5e7eb;border-radius:999px;height:4px;margin-bottom:16px;">
+        <div style="background:#25D366;height:4px;border-radius:999px;width:${pct}%;"></div>
+      </div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:2px;">${item.cliente}</div>
+      <div style="font-size:12px;color:#888;margin-bottom:12px;">📞 ${item.tel}</div>
+      <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:11px;font-size:12px;line-height:1.65;white-space:pre-wrap;max-height:150px;overflow-y:auto;margin-bottom:14px;color:#374151;">${item.txt}</div>
+      <div style="display:flex;gap:8px;">
+        <a id="_wsp-abrir-btn" href="${waUrl}" target="_blank"
+          style="flex:1;background:#25D366;color:#fff;border-radius:8px;padding:13px;font-size:14px;font-weight:600;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <i class="ti ti-brand-whatsapp" style="font-size:17px;"></i> Abrir WhatsApp
+        </a>
+        <button onclick="_wspSaltar()" style="background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;padding:13px 14px;font-size:12px;color:#555;cursor:pointer;">Saltar</button>
+      </div>
+      <div style="text-align:center;margin-top:8px;font-size:11px;color:#aaa;">Al volver a esta pestaña avanza automáticamente</div>
+      <button onclick="document.getElementById('_modal-wsp').remove()" style="display:block;width:100%;margin-top:6px;background:none;border:none;color:#ccc;font-size:12px;cursor:pointer;padding:2px;">✕ Cerrar</button>
+    </div>`;
+
+  // Al volver de WhatsApp → avanzar automáticamente
+  document.getElementById('_modal-wsp')?.remove(); // por si acaso
+  document.body.appendChild(ov);
+
+  // Wire up the open button after DOM insertion
+  document.getElementById('_wsp-abrir-btn').addEventListener('click',()=>{
+    const handler=()=>{
+      if(document.hidden){document.addEventListener('visibilitychange',handler,{once:true});return;}
+      setTimeout(()=>{wspIdx++;_mostrarModalWSP();},500);
+    };
+    document.addEventListener('visibilitychange',handler,{once:true});
+  },{once:true});
 }
+
+window._wspSaltar=function(){wspIdx++;_mostrarModalWSP();};
 
 // VIAJES — real-time listener
 function cargarViajes(){

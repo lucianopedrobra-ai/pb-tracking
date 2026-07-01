@@ -459,15 +459,18 @@ async function cargarViaje(uid){
           }catch(_){}
         }
 
-        // Intento 4: por nombre — leer nombre desde usuarios/{uid} o choferes/{uid}
+        // Intento 4: por nombre normalizado (ordena palabras → "Dario Wagner" == "Wagner Dario")
+        // Cubre el caso donde el nombre en usuarios/ está en orden diferente al choferNombre del viaje
         let miNombre=null;
         try{const sn=await get(ref(db,'usuarios/'+uid));if(sn.exists()&&sn.val().nombre)miNombre=sn.val().nombre;}catch(_){}
         if(!miNombre){try{const sn=await get(ref(db,'choferes/'+uid));if(sn.exists()&&sn.val().nombre)miNombre=sn.val().nombre;}catch(_){};}
         if(!miNombre&&user.displayName)miNombre=user.displayName;
         if(miNombre){
-          const norm=s=>s.toLowerCase().trim();
-          const found4=(entries.find(([,v])=>v.choferNombre&&norm(v.choferNombre)===norm(miNombre)&&v.estado==='activo')
-                     || entries.filter(([,v])=>v.choferNombre&&norm(v.choferNombre)===norm(miNombre)&&v.estado==='completado').sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0]);
+          // normName: lowercase + ordenar palabras → "Wagner Dario" y "Dario Wagner" son iguales
+          const normName=s=>s.toLowerCase().trim().split(/\s+/).sort().join(' ');
+          const myNorm=normName(miNombre);
+          const found4=(entries.find(([,v])=>v.choferNombre&&normName(v.choferNombre)===myNorm&&v.estado==='activo')
+                     || entries.filter(([,v])=>v.choferNombre&&normName(v.choferNombre)===myNorm&&v.estado==='completado').sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0]);
           if(found4){_aplicarViaje(uid,found4[0],found4[1]);return;}
         }
       }

@@ -391,7 +391,17 @@ onAuthStateChanged(auth,async user=>{
     if(snapC.exists())await set(ref(db,'usuarios/'+user.uid),{rol:'chofer',nombre:snapC.val().nombre,email:user.email});
     else{window.location.href='index.html';return;}
   }
-  await cargarViaje(user.uid);
+  // Determinar el "effectiveChoferId": la clave que usó oficina al publicar el viaje.
+  // Puede diferir del auth uid si el entry en choferes/ fue creado con otro key (ej: manual).
+  let effectiveChoferId=user.uid;
+  try{
+    const snapChoferes=await get(ref(db,'choferes'));
+    if(snapChoferes.exists()&&user.email){
+      const match=Object.entries(snapChoferes.val()).find(([,c])=>c.email===user.email);
+      if(match&&match[0]!==user.uid) effectiveChoferId=match[0];
+    }
+  }catch(_){}
+  await cargarViaje(effectiveChoferId);
 });
 
 // ── VIAJE ─────────────────────────────────────────────

@@ -1772,8 +1772,8 @@ function parsearHojaDeRuta(txt,lineas){
   const hrM=txt.match(/HOJA\s*DE\s*RUTA\s+(\d{5,10})/i)||txt.match(/N[°º]\s*(\d{5,10})/);
   const hrNumero=hrM?hrM[1].padStart(8,'0'):'';
 
-  // zona — de "Zona: ZONA PIAMONTE Total:..."
-  const zonaM=txt.match(/Zona:\s*([A-ZÁÉÍÓÚÑ][A-ZÁÉÍÓÚÑ\s]+?)(?:\s+Total:|\n|\r)/i);
+  // zona — intenta "Zona: XXX Total:" en la misma línea; si falla, captura toda la línea Zona:
+  const zonaM=txt.match(/Zona:\s*([^\n\r]+?)\s+Total:/i)||txt.match(/^Zona:\s*([^\n\r]+)/im);
   const zona=zonaM?zonaM[1].trim():'';
 
   // Dividir en bloques usando las líneas ")))))..." como separador.
@@ -1860,11 +1860,12 @@ function parsearHojaDeRuta(txt,lineas){
       if(lm){localidad=lm[1].trim();break;}
     }
 
-    // kg: suma de "NNN,NNN KG" al final de cada línea del bloque
+    // kg: suma de KG al final de línea — soporta enteros (500 KG), decimales (234,56 KG)
+    // y miles con punto (1.234,56 KG → elimina "." como sep de miles antes de parsear)
     let kg=0;
     for(const bl of bloque){
-      const km=bl.match(/(\d+[.,]\d+)\s+KG\s*$/i);
-      if(km)kg+=parseFloat(km[1].replace(',','.'));
+      const km=bl.match(/([\d.]+,\d+|\d+)\s+KG\s*$/i);
+      if(km){const raw=km[1].replace(/\./g,'').replace(',','.');kg+=parseFloat(raw)||0;}
     }
 
     // material: descripción del primer artículo
@@ -1947,17 +1948,22 @@ window.procesarPDF=async function procesarPDF(file){
     hrNumeroActual=parsed.hrNumero||'';
     cobrosPreexistentes=parsed.cobrosPreexistentes||[];
     if(parsed.zona){
-      // Try to match to predefined zones
+      // Normalizar: quitar acentos y pasar a mayúsculas para comparación robusta
+      const norm=s=>s.normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().trim();
+      const zonaP=norm(parsed.zona); // ej: "ZONA SAN JORGE (MIERCOLES)"
       const sel=document.getElementById('sel-zona');
-      const zonaUp=parsed.zona.toUpperCase();
       let matched=false;
       for(const opt of sel.options){
-        if(opt.value&&opt.value!=='OTRA'&&zonaUp.includes(opt.value.toUpperCase().replace(/\s*\(.*\)/,'').trim())){
-          sel.value=opt.value;
-          document.getElementById('inp-zona').value=opt.value;
-          document.getElementById('inp-zona').style.display='none';
-          matched=true;break;
-        }
+        if(!opt.value||opt.value==='OTRA')continue;
+        const optN=norm(opt.value); // ej: "ZONA SAN JORGE (MIERCOLES)"
+        // 1. Coincidencia exacta (normalizada)
+        if(zonaP===optN){sel.value=opt.value;matched=true;break;}
+        // 2. zonaP empieza con el valor del option (capturó texto extra al final)
+        if(zonaP.startsWith(optN)){sel.value=opt.value;matched=true;break;}
+        // 3. Bases sin paréntesis coinciden (mismo nombre, distinto día)
+        const optBase=optN.replace(/\s*\([^)]*\)/g,'').trim();
+        const zonaBase=zonaP.replace(/\s*\([^)]*\)/g,'').trim();
+        if(optBase===zonaBase&&zonaP.includes(optN.replace(optBase,'').trim()||optN)){sel.value=opt.value;matched=true;break;}
       }
       if(!matched){
         sel.value='OTRA';

@@ -432,7 +432,6 @@ async function cargarViaje(uid){
     let debugViajes=[];
     if(snapAll.exists()){
       const entries=Object.entries(snapAll.val());
-      // Guardar info diagnóstico (los últimos 5 viajes con su choferId)
       debugViajes=entries.slice(-5).map(([id,v])=>({id,choferId:v.choferId||'(vacío)',estado:v.estado||'?',nombre:v.choferNombre||''}));
       const activo=entries.find(([,v])=>v.choferId===uid&&v.estado==='activo');
       const completo=entries.filter(([,v])=>v.choferId===uid&&v.estado==='completado')
@@ -446,6 +445,35 @@ async function cargarViaje(uid){
         if(hr.estado==='completado'){mostrarCerrado();}
         else{render();renderCobros();renderRecepciones();}
         return;
+      }
+      // Intento 3: fallback por choferNombre — cuando choferId en viaje != auth uid
+      // (caso: entrada en choferes/ creada con key distinto al uid de Auth)
+      const user=auth.currentUser;
+      if(user){
+        // Obtener nombre desde usuarios/{uid} o de choferes buscando por email
+        let miNombre=null;
+        try{
+          const snapUsr=await get(ref(db,'usuarios/'+uid));
+          if(snapUsr.exists()&&snapUsr.val().nombre) miNombre=snapUsr.val().nombre;
+        }catch(_){}
+        if(!miNombre&&user.displayName) miNombre=user.displayName;
+        if(miNombre){
+          const norm=s=>s.toLowerCase().trim();
+          const activoNombre=entries.find(([,v])=>v.choferNombre&&norm(v.choferNombre)===norm(miNombre)&&v.estado==='activo');
+          const completoNombre=entries.filter(([,v])=>v.choferNombre&&norm(v.choferNombre)===norm(miNombre)&&v.estado==='completado')
+                                      .sort((a,b)=>(b[1].fechaTs||0)-(a[1].fechaTs||0))[0];
+          const foundNombre=activoNombre||completoNombre;
+          if(foundNombre){
+            const [id,hr]=foundNombre;
+            viajeId=id;hrInfo=hr;paradas=hr.paradas||[];gpsLink=hr.gpsLink||'';
+            // Reparar asignaciones para la próxima vez (usando auth uid)
+            try{await set(ref(db,'asignaciones/'+uid),{viajeId:id});}catch(_){}
+            document.getElementById('loading-screen').style.display='none';
+            if(hr.estado==='completado'){mostrarCerrado();}
+            else{render();renderCobros();renderRecepciones();}
+            return;
+          }
+        }
       }
     }
     console.warn('Sin viaje para uid:',uid,'asignaciones apunta a:',asigViajeId,'viajes encontrados:',debugViajes);
